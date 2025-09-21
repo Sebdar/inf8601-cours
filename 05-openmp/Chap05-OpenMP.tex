@@ -1,0 +1,1192 @@
+\documentclass{beamer}
+
+\usetheme[
+        menuwidth={0.3\paperwidth}
+        ]{polymtl}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+%\usepackage[frenchb]{babel}
+\usepackage[babel]{csquotes}
+%\usepackage{lmodern}
+%\usepackage{palatino}
+
+\setbeamercovered{transparent=20}
+\usepackage{adjustbox}
+%\usepackage{graphicx}
+\graphicspath{{Diagrams/}}
+
+\begin{document}
+
+\AtBeginSection[]{
+  \begin{frame}{OpenMP}
+  \tableofcontents[currentsection]
+  \end{frame} 
+}
+
+\title[]{OpenMP} 
+\subtitle{Module 5 \\
+INF8601 Systèmes informatiques parallèles}
+\author{Michel Dagenais} 
+\date{\today} 
+\institute{\'Ecole Polytechnique de Montr\'eal \\ 
+  \vspace{-0.2em}{Département de génie informatique et génie logiciel} }
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\begin{frame}{Sommaire}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{OpenMP}
+
+  \begin{itemize}
+    \item Programmation en mémoire partagée, (Open Multi-Processing, OpenMP).
+
+    \item API C, C++, Fortran.
+
+    \item Sur Linux, Unix, AIX, Solaris, Mac OS X, et Microsoft Windows.
+
+    \item Consortium sans but lucratif qui inclut AMD, IBM, Intel, Cray, HP, Fujitsu, NVIDIA, NEC, Microsoft, Texas Instruments, VMware, Oracle Corporation...
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Versions}
+
+  \begin{itemize}
+    \item 1997, OpenMP 1.0 pour Fortran (C/C++ en 1998)
+    \item 2000, OpenMP 2.0 pour Fortran (C/C++ en 2002) 
+    \item 2005, OpenMP 2.5 pour C/C++ et Fortran
+    \item 2008, OpenMP 3.0
+    \item 2011, OpenMP 3.1
+    \item 2013, OpenMP 4.0 avec SIMD
+    \item 2015, OpenMP 4.5 avec taskloop et ajustements
+    \item 2018, OpenMP 5.0 avec loop, boucles plus flexibles
+    \item 2020, OpenMP 5.1 avec scope et assume
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Caractéristiques}
+
+  \begin{itemize}
+    \item Standard complet et portable, disponible gratuitement.
+
+    \item Utilisation de pragmas pour déclarer les sections à paralléliser, à synchroniser...(utilisé par le compilateur ou le pré-compilateur).
+
+    \item Librairie de support à l'exécution, variables d'environnement.
+    
+    \item Support pour le traçage et le débogage. 
+
+    \item Parallélisme à grain fin qui peut exploiter les coeurs du CPU et le GPU.
+
+    \item Axé sur la performance.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Alternatives}
+
+  \begin{itemize}
+    \item Compilateur parallélisant.
+
+    \item Intel Threading Building Blocks.
+
+    \item OpenMP permet de paralléliser un programme séquentiel graduellement avec une granularité très fine, et même à partir de 4.0 d'utiliser le GPU.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Modèle}
+
+  \begin{itemize}
+    \item Possibilité de créer un grand nombre de fils d'exécution, plus grand ou égal au nombre des processeurs (omp parallel), et de diviser le travail entre les fils (omp for, sections, tasks...).
+
+    \item Tous les fils d'une région parallèle doivent passer par les mêmes sections de division du travail, même s'ils peuvent être dans des fonctions appelées.
+
+    \item La synchronization de contrôle découle en bonne partie des pragmas insérés (section parallèles ou séquentielles, barrières).
+
+    \item Variables peuvent être privées (copie locale à chaque fil) ou partagées.
+
+    \item La synchronisation des données partagées doit se faire par verrous.
+  \end{itemize}
+\end{frame}
+
+\section{Les directives}
+
+\begin{frame}[fragile]{Les pragmas}
+
+  \begin{itemize}
+    \item Syntaxe: \verb|#pragma omp directive [clause...]|
+    
+    \item En C++ 11 ce peut être: \verb|[[ omp :: directive( directive-name, clause...) ]]|
+
+    \item Directives: parallel, for, sections, single, parallel for, parallel sections, simd, target, declare variant, dispatch, requires, assume, nothing, error, teams, masked, loop, tile, unroll, cancel, cancellation point.
+
+    \item Clauses: shared, private, firstprivate, lastprivate, default, reduction, copyin, if, order, ordered, schedule, nowait, safelen, linear, aligned, collapse, device, map, num\_threads, proc\_bind, ...
+% allocate, filter, num\_teams, thread\_limit, uniform, untied, mergeable, in\_reduction, depend, detach.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Parallel}
+
+  \begin{itemize}
+    \item Des fils d'exécution s'ajoutent au fil principal au début du bloc pour former une équipe (team) de fils.
+
+    \item Le fil principal attend que tous les autres fils aient fini à la fin du bloc.
+
+    \item Chaque fil d'exécution fait la même chose.
+
+    \item Apporter des variantes en utilisant son numéro de fil d'exécution (omp\_get\_thread\_num()).
+    
+  \end{itemize}
+\end{frame}
+
+% https://ecpannualmeeting.com/assets/overview/sessions/ff2020%20ECP-Tutorial-with-ECP-template.pdf
+% https://developers.redhat.com/blog/2021/05/03/new-features-in-openmp-5-0-and-5-1#openmp_5_1_features
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+#include <stdio.h>
+#include <omp.h>
+
+int main( int argc, char **argv ) {
+  int rank, size;
+  #pragma omp parallel private(rank)
+  { rank= omp_get_thread_num();
+    size= omp_get_num_threads();
+    printf( "Hello world! I'm %d of %d\n",rank, size );
+  }
+  return 0;
+}
+dorsal> export OMP_NUM_THREADS=4
+dorsal> gcc –fopenmp -o HelloWorld HelloWorld.c
+dorsal> ./HelloWorld
+Hello world! I'm 0 of 4
+Hello world! I'm 2 of 4
+Hello world! I'm 3 of 4
+Hello world! I'm 1 of 4
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Teams}
+
+  \begin{itemize}
+    \item Des équipes (team) de fils d'exécution s'ajoutent à l'équipe principale au début du bloc pour former une ligue (league) d'équipes de fils.
+
+    \item Typiquement utilisé pour les processeurs multiples, chacun avec de nombreux fils d'exécution, sur GPU.
+
+    \item Chaque équipe fait la même chose.
+
+    \item Apporter des variantes en utilisant son numéro d'équipe (omp\_get\_team\_num()).
+    
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+float sp_x[N], sp_y[N], sp_a=0.0001e0;
+double dp_x[N], dp_y[N], dp_a=0.0001e0;
+
+#pragma omp teams num_teams(2) private(tm_id)
+{ tm_id = omp_get_team_num();
+  if(tm_id == 0) // Do Single Precision Work (SAXPY) {
+    #pragma omp parallel for simd simdlen(8)
+    for(int i=0; i<N; i++){sp_x[i] = sp_a*sp_x[i] + sp_y[i];}
+  }
+  if(tm_id == 1) // Do Double Precision Work (DAXPY) {
+    #pragma omp parallel for simd simdlen(4)
+    for(int i=0; i<N; i++){dp_x[i] = dp_a*dp_x[i] + dp_y[i];}
+  }
+}
+printf("i=%d sp|dp %f %f \n",N-1, sp_x[N-1], dp_x[N-1]);
+printf("i=%d sp|dp %f %f \n",N/2, sp_x[N/2], dp_x[N/2]);
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Sections}
+
+  \begin{itemize}
+    \item Diviser une séquence de code en sections, chacune n'est exécutée que par un seul fil d'exécution.
+  \end{itemize}
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp sections
+  { #pragma omp section
+    { ...
+    }
+    #pragma omp section
+    { ...
+    }
+  }
+  ...
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+#pragma omp parallel sections
+{ #pragma omp section
+  { for (int i=0; i<n; i++) {
+      input(i);
+      signal_input(i);
+    }
+  }
+  #pragma omp section
+  { for (int i=0; i<n; i++) {
+      wait_input(i);
+      process(i);
+      signal_process(i);
+    }
+  }
+  #pragma omp section
+  { for (int i=0; i<n; i++) {
+      wait_process(i);
+      output(i);
+    }
+  }
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{For}
+
+  \begin{itemize}
+    \item Le for doit avoir une forme simple, sans \texttt{break} ou \texttt{continue}.
+
+    \item le domaine de l'itérateur est divisé entre les fils pour tout couvrir.
+
+    \item Différentes stratégies de division du travail sont possibles (schedule: statique, dynamique, guidée, auto, runtime).
+
+    \item Chaque fil d'exécution s'occupe d'un intevalle de la boucle.
+
+    \item Il est possible d'avoir un combiné \verb|#pragma omp parallel for|.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+Le fil 0 pourrait faire i = 0, 1, 2, 3, 4 et le fil 1 pourrait faire i = 5, 6, 7, 8, 9
+  \begin{verbatim}
+#pragma omp parallel for default(none) 
+    private(i,j,sum) shared(m,n,a,b,c)
+for (i=0; i<m; i++) {
+  sum = 0.0;
+  for (j=0; j<n; j++) sum += b[i][j]*c[j];
+  a[i] = sum;
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Transformation de boucle}
+
+  \begin{verbatim}
+#pragma omp tile sizes(size-list)
+loop-nest
+
+#pragma omp unroll [clause]
+loop-nest
+  \end{verbatim}
+
+  \begin{itemize}
+    \item Le compilateur peut changer la structure des boucles visées.
+
+    \item Unroll déroule les boucles pour réduire le surcoût inhérent à chaque tour de boucle (incrément d'indice, comparaison, saut).
+    
+    \item Tile fait des groupements multi-dimensionnels d'indices et commence par itérer entre les groupements et ensuite itère à l'intérieur des groupements. Cela double la profondeur d'imbrication.
+    
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Scan}
+
+  \begin{verbatim}
+{
+structured-block-sequence
+#pragma omp scan
+structured-block-sequence
+}
+  \end{verbatim}
+
+  \begin{itemize}
+    \item Calcul préfixe inclusif ou exclusif pour la boucle englobante.
+
+    \item Un premier bloc constitue la première phase et le second bloc constitue la seconde phase du calcul préfixe.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+int a[N], b[N];
+int x = 0;
+
+for (int k = 0; k < N; k++) a[k] = k + 1;
+
+#pragma omp parallel for simd reduction(inscan,+: x)
+for (int k = 0; k < N; k++) {
+  x += a[k];
+  #pragma omp scan inclusive(x)
+  b[k] = x;
+}
+
+printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Tasks}
+
+  \begin{itemize}
+    \item Diviser une séquence de code en tâches, chacune n'est exécutée que par un seul fil d'exécution, parmi ceux de l'équipe de la section parallèle englobante, en différé.
+  \end{itemize}
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp task
+  { ...
+  }
+  #pragma omp task
+  { ...
+  }
+  ...
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp single
+  { #pragma omp task
+    { printf("Hello\n"); }
+
+    #pragma omp task
+    { printf("World\n"); }
+
+    printf(“Bye\n“);
+  }
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Single}
+
+  \begin{itemize}
+    \item Cette section de code n'est exécutée que par un seul fil d'exécution.
+  \end{itemize}
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp single
+  { ...
+  }
+  ...
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp single
+  printf("Beginning work1.\n");
+  work1();
+  #pragma omp single
+  printf("Finishing work1.\n");
+  #pragma omp single nowait
+  printf("Finished work1 and beginning work2.\n");
+  work2();
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Masked}
+
+  \begin{itemize}
+    \item Cette section de code n'est exécutée que par les fils d'exécution spécifiés dans la clause \textit{filter}. Par défaut, sans clause filter, seul le fil d'exécution 0 est pris.
+  \end{itemize}
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp masked
+  { ... }
+  ...
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+#pragma omp parallel
+{ do
+  { #pragma omp for private(i)
+    for( i = 1; i < n-1; ++i ) 
+    { xold[i] = x[i]; }
+
+    #pragma omp single
+    { toobig = 0; }
+
+    #pragma omp for private(i,y,error) reduction(+:toobig)
+    for( i = 1; i < n-1; ++i ) { 
+      y = x[i];
+      x[i] = average(xold[i-1], x[i], xold[i+1]);
+      error = y - x[i];
+      if(error > tol || error < -tol) ++toobig;
+    }
+    #pragma omp masked
+    { ++c; 
+      printf( "iteration %d, toobig=%d\n", c, toobig );
+    }
+  } while( toobig > 0 );
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Scope}
+
+  \begin{itemize}
+    \item Cette section de code est exécutée par tous les fils d'exécution mais en tenant compte des clauses \textit{private, reduction, nowait} spécifiées.
+  \end{itemize}
+%  \begin{verbatim}
+%#pragma omp parallel
+%{ #pragma omp masked
+%  { ... }
+%  ...
+%}
+%  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Critical}
+
+  \begin{itemize}
+    \item \verb|#pragma omp critical [name]|: une seule région critique du même nom peut s'exécuter en même temps, même par des fils d'autres régions parallèles.
+
+    \item Constitue un verrou global ou partiel (avec un nom) plutôt qu'un verrou associé à un élément de donnée particulier.
+  \end{itemize}
+\end{frame}
+
+ \begin{frame}[fragile]{Exemple}
+
+  \begin{verbatim}
+#pragma omp parallel shared(x, y) private(ix_next, iy_next)
+{ #pragma omp critical (xaxis)
+  { ix_next = dequeue(x); }
+
+  work(ix_next, x);
+
+  #pragma omp critical (yaxis)
+  { iy_next = dequeue(y); }
+
+  work(iy_next, y);
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Synchronisation de contrôle}
+
+  \begin{itemize}
+    \item Lorsque des données peuvent être partagées par des fils d'exécution différents et qu'il y a une dépendance (lecture d'une donnée écrite précédemment), il faut mettre une barrière pour synchroniser les fils parallèles.
+
+    \item Barrière implicite à la fin de chaque région.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+x = 2;
+#pragma omp parallel num_threads(2) shared(x)
+{ if (omp_get_thread_num() == 0) { 
+    x = 5; 
+  } else {
+    /* Print 1: the following read of x has a race */
+    printf("1: Thread# %d: x = %d\n", omp_get_thread_num(),x );
+  }
+
+  #pragma omp barrier
+
+  if (omp_get_thread_num() == 0) {
+    printf("2: Thread# %d: x = %d\n", omp_get_thread_num(),x );
+  } else {
+    printf("3: Thread# %d: x = %d\n", omp_get_thread_num(),x );
+  }
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Taskwait}
+
+  \begin{itemize}
+    \item \verb|#pragma omp taskwait|
+
+    \item Attendre après toutes les tâches enfant de la tâche courante.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp single
+  { #pragma omp task
+    { printf("Hello\n"); }
+
+    #pragma omp task
+    { printf("World\n"); }
+
+    #pragma omp taskwait
+    printf(“Bye\n“);
+  }
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Atomic}
+
+  \begin{itemize}
+    \item \verb|#pragma omp atomic {x <operateur>= expression}|:
+
+    \item Demander une opération arithmétique atomique sur la variable accédée.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \small
+  \begin{verbatim}
+for (i = 0; i < 10000; i++) {
+  index[i] = i % 1000;
+  y[i]=0.0;
+}
+
+for (i = 0; i < 1000; i++) {
+  x[i] = 0.0;
+}
+
+#pragma omp parallel for shared(x, y, index, n)
+for (i=0; i<n; i++) {
+  #pragma omp atomic update
+  x[index[i]] += work1(i);
+
+  y[i] += work2(i);
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Flush}
+
+  \begin{itemize}
+    \item \verb|#pragma omp flush|
+
+    \item Barrière mémoire complète. La vue temporaire de la mémoire par un fil est synchronisée avec la copie principale
+
+    \item Doit être utilisé dans les deux ou plusieurs fils d'exécution qui accèdent des données partagées en parallèle.
+  \end{itemize}
+\end{frame}
+
+ \begin{frame}[fragile]{Exemple}
+
+  \begin{verbatim}
+// Producteur
+
+data = 2000;
+#pragma omp flush(data);
+flag = 1;
+#pragma omp flush(flag);
+
+// Consommateur
+#pragma omp flush(flag)
+if(flag == 1) {
+  #pragma omp flush(data)
+  x = data;
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Ordered}
+
+  \begin{itemize}
+    \item Cette section de code est exécutée dans l'ordre des itérations de la boucle qui la contient.
+
+    \item Très contraignant pour l'exécution parallèle de la boucle.
+  \end{itemize}
+  \begin{verbatim}
+#pragma omp parallel for ordered
+{ for(i = 0 ; i < N; i++) { 
+    calcul complexe...
+
+    #pragma omp ordered
+    { printf(“a[%d]=%d”, i, a[i]); 
+    }
+  }
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Dépendances explicites}
+
+  \begin{itemize}
+    \item \verb|#pragma omp depobj(obj)|, déclarer obj comme objet pour représenter une dépendance et changer son état.
+
+    \item Clause \texttt{depend}, spécifier une dépendance et son type pour une tâche (task) ou pour une exécution sur une cible (target).
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+int a = 1, b = 2, c;
+
+#pragma omp parallel
+  #pragma omp single
+  {
+    #pragma omp task depend(out:a)
+    { a++; printf ("Task 1; "); }
+    
+    #pragma omp task depend(out:b)
+    { b++; printf ("Task 2; "); }
+
+    #pragma omp task depend(in:a,b) depend(out:c)
+    { c = a + b; printf ("Task 3; "); }
+
+    #pragma omp task depend(in:c)
+    { printf ("Task 4: c = %d;\n", c); }
+
+Task 2; Task 1; Task 3; Task 4: c = 5;
+Task 1; Task 2; Task 3; Task 4: c = 5;
+  \end{verbatim}
+\end{frame}
+
+\section{Les fonctions et clauses}
+
+\begin{frame}{Fonctions de synchronisation}
+
+  \begin{itemize}
+    \item omp\_init\_lock, omp\_destroy\_lock, omp\_set\_lock, omp\_unset\_lock, omp\_test\_lock: verrous pour une granularité de synchronisation plus fine.
+
+    \item Aussi des verrous qui peuvent être imbriqués (nest\_lock).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Statut des variables}
+
+  \begin{itemize}
+    \item Pour chaque région parallèle ou division du travail (parallel, task, for, sections), il faut définir la portée des variables et comment elles sont initialisées et finalisées.
+
+    \item Variables locales à la région, locales au fil d'exécution ou partagées. Une clause permet de spécifier ce qui est par défaut. 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Shared, Private}
+
+  \begin{itemize}
+    \item La variable visée doit exister avant et après la région visée par la directive et former un objet complet en mémoire.
+
+    \item L'effet est sur la portée statique et non dynamique de la directive.
+
+    \item Shared, une seule copie partagée par tous les fils d'exécution.
+
+    \item Private: variable privée à chaque fil d'exécution, indéfinie avant et après la région visée par la directive.
+
+    \item Firstprivate: variables privées initialisées avec la valeur en entrée.
+
+    \item Lastprivate: la valeur de la variable privée du fil qui effectue la dernière itération de la boucle est prise comme valeur en sortie.
+
+    \item Copyprivate: propager une variable (private ou threadprivate) d'une région \texttt{single} aux autres fils d'exécution. 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Threadprivate}
+
+  \begin{itemize}
+    \item Une copie des variables listées est créée pour chaque fil d'exécution.
+
+    \item La clause copyin permet d'effectuer de nouveau la copie plus tard.
+
+    \item Ces variables copiées continuent d'exister d'une tâche à l'autre et possiblement d'une section parallèle à l'autre.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Reduction}
+
+  \begin{itemize}
+    \item Variable utilisée pour une réduction avec un opérateur commutatif et associatif entre les fils d'une région parallèle.
+
+    \item \texttt{reduction(+: sum)}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{If}
+
+  \begin{itemize}
+    \item La région visée n'est effectuée en parallèle que si la condition est vraie.
+
+    \item Dans plusieurs cas il est préférable de rester en séquentiel si le nombre de processeurs ou la taille du problème sont trop petits.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Nowait}
+
+  \begin{itemize}
+    \item Lorsque les données sont indépendantes, l'exécution de deux régions peut se chevaucher.
+  \end{itemize}
+  \small
+  \begin{verbatim}
+#pragma omp parallel shared(n,a,b,c,d,e,f) private(i,scale) { 
+  #pragma omp for nowait
+  for (i=0; i<n; i++) a[i] = b[i] + c[i];
+
+  #pragma omp for nowait
+  for (i=0; i<n; i++) d[i] = e[i] + f[i];
+
+  #pragma omp barrier
+
+  scale = sum(a,0,n) + sum(d,0,n);
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Collapse}
+
+  \begin{itemize}
+    \item Clause pour les parallel for.
+
+    \item Nombre de niveaux d'imbrication de boucle à aplatir afin d'augmenter le niveau de parallélisme possible.
+  \end{itemize}
+\end{frame}
+
+\section{OpenMP pour les processeurs SIMD ou hétérogènes}
+
+\begin{frame}[fragile]{SIMD}
+
+  \begin{itemize}
+    \item Directive pour les boucles for indiquant que plusieurs itérations peuvent être exécutées concurremment avec des instructions SIMD (vectorielles).
+
+    \item Il est possible d'avoir un combiné \verb|#pragma omp for simd|.
+
+    \item Toute fonction qui peut être appelée par du code SIMD doit être déclarée SIMD (\texttt{pragma omp declare SIMD}).
+
+    \item Le compilateur devra s'assurer que le code visé pourra être compilé pour le processeur SIMD ciblé, par exemple avoir une copie en code natif et une copie en bytecode qui pourra être compilée à l'exécution pour le bon GPU.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Clauses}
+
+  \begin{itemize}
+    \item safelen: la distance maximale entre deux itérations qui seront exécutées en parallèle sur le dispositif SIMD.
+    
+    \item simdlen: le nombre recommandé d'itérations à grouper en une instruction SIMD.
+    
+    \item aligned: à combien d'octets sont alignés les variables listées.
+%
+%    \item uniform: paramètre d'une fonction SIMD qui ne varie pas d'un appel à l'autre de la même exécution SIMD concurrente.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Distribute}
+
+  \begin{itemize}
+    \item Directive pour les boucles afin de distribuer le travail entre les fils d'exécution primaires des équipes de la ligue courante.
+
+    \item Stratégies de division du travail non précisée ou statique, \verb|dist_schedule(static, chunk_size)|.
+
+    \item Il est possible d'avoir un combiné \verb|#pragma omp distribute simd| ou \verb|#pragma omp teams distribute|.
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \small
+  \begin{verbatim}
+float sum = 0.0;
+int i, i0;
+
+#pragma omp target map(to: B[0:N], C[0:N]) map(tofrom: sum)
+  #pragma omp teams thread_limit(block_threads) reduction(+:sum)
+    #pragma omp distribute
+    for (i0=0; i0<N; i0 += block_size)
+      #pragma omp parallel for reduction(+:sum)
+      for (i=i0; i< min(i0+block_size,N); i++)
+        sum += B[i] * C[i];
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Distribute parallel for}
+
+  \begin{itemize}
+    \item Directive pour les boucles afin de distribuer le travail entre les fils d'exécution des équipes de la ligue courante.
+
+    \item Stratégies de division du travail non précisée ou statique, \verb|dist_schedule(static, chunk_size)|.
+
+    \item Il est possible d'avoir un combiné \verb|#pragma omp distribute parallel for simd|.
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Loop}
+
+  \begin{itemize}
+    \item Directive pour les boucles afin de distribuer le travail entre les fils d'exécution selon le contexte englobant (teams, parallel...).
+    
+    \item Les itérations peuvent être exécutées de manière concurrente dans n'importe quel ordre.
+
+    \item On peut spéficier la portée de la division du travail (bind: teams / parallel / thread).
+
+    \item Le compilateur choisit la meilleure stratégie (combinaison de distribute, parallel, simd...).
+
+    \item Il est possible d'avoir un combiné \verb|#pragma omp parallel loop|.
+    
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \small
+  \begin{verbatim}
+float x[N], y[N];
+float a = 2.0;
+
+for(int i=0;i<N;i++){ x[i]=i; y[i]=0;}
+
+#pragma omp parallel loop
+for(int i = 0; i < N; ++i) y[i] = a*x[i] + y[i];
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+// ecpannualmeeting.com 2020 Tutorial-with-ECP-template.pdf
+#pragma omp target teams distribute // Now
+for (i=0; i<N; ++i)
+  #pragma omp parallel for
+  for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
+
+#pragma omp target teams loop bind(teams) // Very soon
+for (i=0; i<N; ++i)
+  #pragma omp loop bind(thread)
+  for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
+
+#pragma omp target // Soon
+  #pragma omp loop bind(thread) collapse(2)
+  for (i=0; i<N; ++i)
+    for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
+    
+#pragma omp loop bind(thread) collapse(2) // Later
+for (i=0; i<N; ++i)
+  for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Taskloop}
+
+  \begin{verbatim}
+#pragma omp taskloop [clause[[,] clause] ...]
+loop-nest
+  \end{verbatim}
+  \begin{itemize}
+    \item Les itérations de la boucle sont converties en tâches (task).
+
+    \item Il est possible d'avoir un combiné \verb|#pragma omp taskloop simd|.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Target}
+
+  \begin{itemize}
+    \item Target: spécifier le dispositif cible à utiliser pour exécuter le bloc visé.
+
+    \item Target data, target enter data, target exit data: spécifier les données à transférer vers / du dispositif avec la clause map.
+
+    \item Target update: synchroniser certaines données entre l'hôte et le dispositif cible.
+
+    \item Declare target, begin declare target, end declare target: définir certaines variables ou fonctions sur le dispositif cible. 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+#define N 10000
+#define M 1024
+#pragma omp declare target
+float Q[N][N];
+#pragma omp declare simd uniform(i) linear(k) notinbranch
+float P(const int i, const int k) 
+{ return Q[i][k] * Q[k][i]; }
+#pragma omp end declare target
+
+float accum(void) {
+  float tmp = 0.0;
+  int i, k;
+  #pragma omp target
+  #pragma omp parallel for reduction(+:tmp)
+  for (i=0; i < N; i++) {
+    float tmp1 = 0.0;
+    #pragma omp simd reduction(+:tmp1)
+    for (k=0; k < M; k++) tmp1 += P(i,k);
+    tmp += tmp1;
+  }
+  return tmp;
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+#define THRESHOLD1 1000000
+#define THRESHOLD2 1000
+
+extern void init(float*, float*, int);
+extern void output(float*, int);
+
+void vec_mult(float *p, float *v1, float *v2, int N) {
+  int i;
+  init(v1, v2, N);
+  #pragma omp target if(N>THRESHOLD1) map(to: v1[0:N], v2[:N])\
+      map(from: p[0:N])
+  #pragma omp parallel for if(N>THRESHOLD2)
+  for (i=0; i<N; i++) {
+    p[i] = v1[i] * v2[i];
+  }
+  output(p, N);
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+extern void init(float *, float *, int);
+extern int maybe_init_again(float *, int);
+extern void output(float *, int);
+void vec_mult(float *p, float *v1, float *v2, int N) {
+  int i;
+  init(v1, v2, N);
+  #pragma omp target data map(to: v1[:N], v2[:N]) map(from: p[0:N])
+  { int changed;
+    #pragma omp target
+    #pragma omp parallel for
+    for (i=0; i<N; i++) p[i] = v1[i] * v2[i];
+    changed = maybe_init_again(v1, N);
+    #pragma omp target update if (changed) to(v1[:N])
+    changed = maybe_init_again(v2, N);
+    #pragma omp target update if (changed) to(v2[:N])
+    #pragma omp target
+    #pragma omp parallel for
+    for (i=0; i<N; i++) p[i] = p[i] + (v1[i] * v2[i]);
+  }
+  output(p, N);
+}
+  \end{verbatim}
+\end{frame}
+
+\section{Fonctions et outils de support}
+
+\begin{frame}[fragile]{Fonctions de support: Threads}
+
+  \begin{itemize}
+    \item omp\_set\_num\_threads: spécifier le nombre de fils d'exécution.
+
+    \item omp\_get\_num\_threads: nombre de fils d'exécution.
+
+    \item omp\_get\_max\_threads: nombre maximal possible de fils d'exécution.
+
+    \item omp\_get\_thread\_num: numéro du fil courant.
+
+    \item omp\_get\_num\_procs: nombre de processeurs disponibles.
+
+    \item omp\_in\_parallel: dans une région parallèle?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Fonctions de support: Threads}
+
+  \begin{itemize}
+    \item omp\_set\_dynamic, omp\_get\_dynamic: ajustement dynamique du nombre de fils d'exécution. 
+
+    \item omp\_set\_nested, omp\_get\_nested: permission d'avoir une région parallèle imbriquée avec possiblement plus de fils d'exécution créés.
+
+    \item OMP\_STACKSIZE: taille des piles pour les fils d'exécution.
+
+    \item omp\_get\_wtime: temps écoulé en secondes.
+
+    \item omp\_get\_wtick: résolution de l'horloge utilisée pour omp\_get\_wtime.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Fonctions de support}
+
+  \begin{itemize}
+    \item omp\_set\_schedule, omp\_get\_schedule: static, dynamic, guided, auto sont les stratégies possibles pour diviser les itérations de boucles entre les fils d'exécution, avec une granularité spécifiée.
+
+    \item omp\_get\_thread\_limit: nombre maximal de fils disponibles pour le programme.
+
+    \item omp\_set\_max\_active\_levels, omp\_get\_max\_active\_levels: profondeur maximale d'imbrication de régions parallèles.
+
+    \item omp\_get\_level, omp\_get\_active\_level: profondeur courante de régions parallèles (actives) imbriquées.
+
+    \item omp\_get\_ancestor\_thread\_num: numéro du thread parent. 
+
+    \item omp\_get\_team\_size(level): nombre de thread dans la région parallèle ancêtre.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Fonctions de support: allocation mémoire}
+
+  \begin{itemize}
+    \item On peut préciser comment allouer certaines variables avec la directive ou la clause \texttt{allocate}, et la clause \texttt{allocator}.
+
+    \item On peut spécifier l'allocateur par défaut: omp\_init\_allocator, omp\_destroy\_allocator, omp\_set\_default\_allocator, omp\_get\_default\_allocator
+
+    \item On peut spécifier un allocateur parmi: omp\_default\_mem\_alloc, omp\_large\_cap\_mem\_alloc, omp\_const\_mem\_alloc, omp\_high\_bw\_mem\_alloc, omp\_low\_lat\_mem\_alloc, omp\_cgroup\_mem\_alloc, omp\_pteam\_mem\_alloc, omp\_thread\_mem\_alloc.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Placement des fils d'exécution}
+
+  \begin{itemize}
+    \item Définir les \textit{places} où peuvent être assignés les fils d'exécution.
+  \end{itemize}
+  
+  \begin{verbatim}
+OMP_PLACES = threads/cores/ll_caches/numa_domains/sockets
+OMP_PLACES = place : length : stride, ...
+OMP_PROC_BIND = true/false/primary/close/spread
+
+setenv OMP_PLACES threads
+
+setenv OMP_PLACES "{0:4}:4:4" # 4 places de 4 fils      
+setenv OMP_PLACES "{0:4},{4:4},{8:4},{12:4}" # idem
+setenv OMP_PLACES \
+  "{0,1,2,3},{4,5,6,7},{8,9,10,11},{12,13,14,15}"
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple}
+
+  \begin{verbatim}
+setenv OMP_PLACES "{0},{1},{2}, … {29},{30},{31}"
+# setenv OMP_PLACES threads (same as above if 32 threads)
+sentenv OMP_NUM_THREADS "8,2,2"
+sentenv OMP_PROC_BIND "spread,spread,close"
+
+#pragma omp parallel // spread, 8 threads
+  #pragma omp parallel // spread, 2 threads
+    #pragma omp parallel // close, 2 threads
+  \end{verbatim}
+  \tiny
+  \begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
+  \hline
+  \multicolumn{16}{|l|}{o} \\ \hline
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} &
+  \multicolumn{2}{|l|}{o} \\ \hline
+  o & o & o & o & o & o & o & o & o & o & o & o & o & o & o & o \\
+  \hline
+  oo & oo & oo & oo & oo & oo & oo & oo & oo & oo & oo & oo & oo & oo & oo & oo \\
+  \hline
+  \end{tabular}
+\end{frame}
+
+% # Threads pinned to individual hyperthreads
+% setenv OMP_PLACES threads ({0},{24},{4},{28},{8},{32},{12},{36},{16},{40},
+%     {20},{44},{1},{25}, ... , {23},{47})
+% # Threads pinned to cores
+% setenv OMP_PLACES cores ({0,24}, {4,28}, {8,32}, {12,36}, {16,40}, {20,44}, 
+%     {1,25}, ... , {23,47})
+% # Threads pinned to sockets
+% setenv OMP_PLACES sockets ({0, 24, 4, 28, 8, 32, 12, 36, 16, 40, 20, 44}, 
+%     {1,25,...}, {...} , {...,23,47})
+
+\begin{frame}[fragile]{Exemple}
+
+  \scriptsize
+  \begin{verbatim}
+# 4 sockets of 6 cores with 2 hyperthreads, round-robbin numbering among s/c/ht
+
+# Thread per core
+#pragma omp parallel num_threads(4*6) proc_bind(spread)
+
+# Thread per socket
+#pragma omp parallel num_threads(4) proc_bind(spread)
+  # Thread per core
+  #pragma omp parallel num_threads(6) proc_bind(spread)
+    # Thread per hyperthread
+    #pragma omp parallel num_threads(2) proc_bind(close)
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Librairies de support}
+
+  \begin{itemize}
+    \item OMPT: enregistrer des fonctions de rappel pour tous les événements importants reliés à OpenMP.
+    
+    \item Environ 40 événements comme parallel begin, parallel end, mutex acquire, mutex acquired, mutex released... 
+
+    \item Possibilité de générer une trace sur disque de ces événements OMPT.
+
+    \item OMPD: interface pour des outils dans des processus séparés comme les débogueurs.
+
+    \item Permet d'interroger le programme OpenMP sur les régions parallèles actives, les fils d'exécution, les tâches...
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Outils de support}
+
+  \begin{itemize}
+    \item Valgrind, Intel Thread Checker, Solaris Studio Thread Analyzer, Perf, Intel Vtune, LTTng.
+
+    \item Vérification de la répartition de la charge entre les fils.
+
+    \item Détection de blocages potentiels, vérifier l'ordre de prise des verrous.
+
+    \item Détection de courses, valider que tous les accès écritures versus écritures ou lectures par des fils différents sont séparés par des synchronisations qui assurent un ordonnancement prévisible.
+
+    \item Vérification de faux partage de lignes de cache.
+  \end{itemize}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Précautions}
+
+  \begin{itemize}
+    \item Attention au placement des variables partagées pour éviter le faux partage en cache.
+
+    \item S'assurer que les fonctions appelées dans les sections parallèles sont prévue pour cela (thread safe).
+
+    \item Accéder en C/C++ les matrices par colonne (dernier indice qui varie le plus vite).
+
+    \item Choisir des morceaux assez gros pour minimiser le surcoût de contrôle (et aider la cache) mais assez petit pour permettre d'équilibrer le travail de chaque fil.
+  \end{itemize}
+\end{frame}
+
+\end{document}
+

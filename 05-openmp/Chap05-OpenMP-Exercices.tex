@@ -1,0 +1,181 @@
+\documentclass{beamer}
+
+\usetheme[
+        menuwidth={0.3\paperwidth}
+        ]{polymtl}
+
+% Pour pdfpc
+\usepackage[fontsize=22,expand=false]{pdfpcnotes}
+
+\setbeamercovered{transparent=20}
+\usepackage{adjustbox}
+%\usepackage{graphicx}
+\graphicspath{{Diagrams/}}
+
+\begin{document}
+
+%\tracingmacros=1
+\newenvironment{question}{%
+\ 
+\begin{onlyenv}<1->%
+\begin{beamercolorbox}[rounded=true]{block body example}}
+{\end{beamercolorbox}%
+\end{onlyenv}%
+\begin{onlyenv}<1>%
+\vspace*{\fill}\vspace*{\fill}\vspace*{\fill}
+\end{onlyenv}
+}
+
+\newenvironment{longquestion}{%
+\ 
+\begin{onlyenv}<1>%
+\begin{beamercolorbox}[rounded=true]{block body example}}
+{\end{beamercolorbox}%
+\vspace*{\fill}\vspace*{\fill}\vspace*{\fill}
+\end{onlyenv}%
+}
+
+\newenvironment{answer}{%
+
+\begin{onlyenv}<2>%
+\small}
+{\vspace*{\fill}\vspace*{\fill}\vspace*{\fill}
+\end{onlyenv}
+}
+\newenvironment{answer2}{%
+
+\begin{onlyenv}<3>%
+\small}
+{\vspace*{\fill}\vspace*{\fill}\vspace*{\fill}
+\end{onlyenv}}
+
+\newenvironment{answer3}{%
+
+\begin{onlyenv}<4>%
+\small}
+{\vspace*{\fill}\vspace*{\fill}\vspace*{\fill}
+\end{onlyenv}}
+
+\newenvironment{answer4}{%
+
+\begin{onlyenv}<5>%
+\small}
+{\vspace*{\fill}\vspace*{\fill}\vspace*{\fill}
+\end{onlyenv}}
+
+\AtBeginSection[]{
+  \begin{frame}{OpenMP}
+  \tableofcontents[currentsection]
+  \end{frame} 
+}
+
+\setbeamertemplate{frametitle continuation}{}
+\setlength{\parskip}{\medskipamount}
+
+\title[]{OpenMP} 
+\subtitle{Exercices pour le Module 5 \\
+INF8601 Systèmes informatiques parallèles}
+\author{Michel Dagenais} 
+\date{\today} 
+\institute{\'Ecole Polytechnique de Montr\'eal \\ 
+  \vspace{-0.2em}{Département de génie informatique et génie logiciel} }
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\section{}
+
+\begin{frame}[fragile]{Une course}
+  \begin{question}
+    %\begin{longquestion}
+Un outil de détection de problème de synchronisation vous indique une course dans la section réalisée par votre co-équipier qui affirme que tout est correct. Qui croire?
+    \begin{verbatim}
+found = 0;
+#pragma omp parallel for
+for(i = 0 ; i < n ; i++) 
+{ if(a[i] == key) found = 1; }
+if(found) { … }
+    \end{verbatim}
+    %\end{longquestion}
+  \end{question}
+  \begin{answer}
+    %{\footnotesize
+Un seul changement peut arriver, toujours le même, found=1. Il y a effectivement une course mais le résultat final ne dépend pas de la course.
+    %}
+  \end{answer}
+\end{frame}
+
+\begin{frame}[fragile]{Enlever les barrières}
+  \begin{longquestion}
+4.2 Votre co-équipier se plaint que votre programme ne profite pas de la performance disponible en raison de la barrière implicite entre les deux boucles. Il veut les mettre nowait ou dans des sections. Est-ce correct? Avez-vous mieux à proposer?
+
+    \begin{verbatim}
+#pragma omp parallel 
+{ #pragma omp for
+  for(i = 0; i < n; i++)
+  { a[i] = f1(i); }
+
+  #pragma omp for
+  for(i = 0; i < n; i++)
+  { b[i] = a[i] + f2(i); }
+}
+    \end{verbatim}
+  \end{longquestion}
+  \begin{answer}
+Avec un ordonnancement statique, nowait serait possible. Mieux encore, on peut fusionner les deux boucles.
+
+    \begin{verbatim}
+#pragma omp parallel 
+{ #pragma omp for
+  for(i = 0; i < n; i++)
+  { a[i] = f1(i);
+    b[i] = a[i] + f2(i); 
+  }
+}
+    \end{verbatim}
+  \end{answer}
+\end{frame}
+
+\begin{frame}[fragile]{Barrières optionnelles}
+  %\only<2>{\vspace{-1em}}
+  \begin{longquestion}
+Votre co-équipier a modifié votre programme en ajoutant des nowait et obtient un gain de performance appréciable mais ses résultats seront-ils corrects et fiables?
+
+    \begin{verbatim}
+#pragma omp parallel
+{ #pragma omp for schedule(static) nowait
+  for (i=0; i<n; i++) c[i] = (a[i] + b[i]) / 2.0f;
+
+  #pragma omp for schedule(static) nowait
+  for (i=0; i<n; i++) z[i] = sqrtf(c[i]);
+
+  #pragma omp for schedule(static) nowait
+  for (i=1; i<=n; i++) y[i] = z[i-1] + a[i];
+}
+    \end{verbatim}
+  \end{longquestion}
+  \begin{answer}
+    %\vspace{-1em}
+    %{\footnotesize
+Entre les deux premières boucles, l'ordonnancement statique règle clairement le problème. C'est aussi le cas pour la troisième boucle car tout est décalé de 1 (indice de boucle et accès de z); le même fil opérera sur la même valeur de z. Le dernier nowait est inutile puisque c'est la dernière boucle du parallel.
+    %}
+  \end{answer}
+\end{frame}
+
+\begin{frame}{Travail de longueur variable}
+  \begin{question}
+    %\begin{longquestion}
+Votre programme comporte une boucle dont la longueur de chaque itération varie grandement. Discutez de différents mécanismes qui pourraient être utilisés pour assurer néanmoins une bonne parallélisation.
+    %\end{longquestion}
+  \end{question}
+  \begin{answer}
+    %{\footnotesize
+Avec un ordonnancement de boucle dynamique ou guidé, possiblement avec une granularité assez fine, le nombre d'itérations par fil sera ajusté automatiquement.
+    %}
+  \end{answer}
+\end{frame}
+
+
+\end{document}
+
