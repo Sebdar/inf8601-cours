@@ -15,10 +15,7 @@
 
 \usetheme{metropolis}
 
-\setbeamercovered{transparent=20}
 \usepackage{adjustbox}
-%\usepackage{graphicx}
-\graphicspath{{Diagrams/}}
 
 \begin{document}
 
@@ -138,45 +135,23 @@ Démo 01 - 02
 
   \begin{itemize}
     \item Des équipes (team) de fils d'exécution s'ajoutent à l'équipe principale au début du bloc pour former une ligue (league) d'équipes de fils.
-
     \item Typiquement utilisé pour les processeurs multiples, chacun avec de nombreux fils d'exécution, sur GPU.
-
     \item Chaque équipe fait la même chose.
-
     \item Apporter des variantes en utilisant son numéro d'équipe (omp\_get\_team\_num()).
-    
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
-
-  \scriptsize
-  \begin{verbatim}
-float sp_x[N], sp_y[N], sp_a=0.0001e0;
-double dp_x[N], dp_y[N], dp_a=0.0001e0;
-
-#pragma omp teams num_teams(2) private(tm_id)
-{ tm_id = omp_get_team_num();
-  if(tm_id == 0) // Do Single Precision Work (SAXPY) {
-    #pragma omp parallel for simd simdlen(8)
-    for(int i=0; i<N; i++){sp_x[i] = sp_a*sp_x[i] + sp_y[i];}
-  }
-  if(tm_id == 1) // Do Double Precision Work (DAXPY) {
-    #pragma omp parallel for simd simdlen(4)
-    for(int i=0; i<N; i++){dp_x[i] = dp_a*dp_x[i] + dp_y[i];}
-  }
-}
-printf("i=%d sp|dp %f %f \n",N-1, sp_x[N-1], dp_x[N-1]);
-printf("i=%d sp|dp %f %f \n",N/2, sp_x[N/2], dp_x[N/2]);
-  \end{verbatim}
+Démo 03
 \end{frame}
 
-\begin{frame}[fragile]{Sections}
+\begin{frame}[fragile,containsverbatim]{Sections}
 
   \begin{itemize}
     \item Diviser une séquence de code en sections, chacune n'est exécutée que par un seul fil d'exécution.
   \end{itemize}
-  \begin{verbatim}
+  \begin{minted}{cpp}
+int fun() {
 #pragma omp parallel
 { #pragma omp sections
   { #pragma omp section
@@ -188,35 +163,12 @@ printf("i=%d sp|dp %f %f \n",N/2, sp_x[N/2], dp_x[N/2]);
   }
   ...
 }
-  \end{verbatim}
+}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
-
-  \scriptsize
-  \begin{verbatim}
-#pragma omp parallel sections
-{ #pragma omp section
-  { for (int i=0; i<n; i++) {
-      input(i);
-      signal_input(i);
-    }
-  }
-  #pragma omp section
-  { for (int i=0; i<n; i++) {
-      wait_input(i);
-      process(i);
-      signal_process(i);
-    }
-  }
-  #pragma omp section
-  { for (int i=0; i<n; i++) {
-      wait_process(i);
-      output(i);
-    }
-  }
-}
-  \end{verbatim}
+Démo 04
 \end{frame}
 
 \begin{frame}[fragile]{For}

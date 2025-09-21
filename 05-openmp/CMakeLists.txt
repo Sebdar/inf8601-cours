@@ -19,3 +19,6 @@ target_link_libraries(02-omp-parallel-critical PUBLIC OpenMP::OpenMP_CXX)
 
 add_executable(03-omp-teams src/03-omp-teams.cpp)
 target_link_libraries(03-omp-teams PUBLIC OpenMP::OpenMP_CXX)
+
+add_executable(04-omp-sections src/04-omp-sections.cpp)
+target_link_libraries(04-omp-sections PUBLIC OpenMP::OpenMP_CXX)
