@@ -5,6 +5,12 @@ find_package(OpenMP)
 
 include_directories(include)
 
+add_custom_target(slides
+    COMMAND mkdir -p slides && cd slides && latexmk -shell-escape -jobname=Chap05-OpenMP ${CMAKE_CURRENT_SOURCE_DIR}/Chap05-OpenMP.tex -pdf
+    DEPENDS Chap05-OpenMP.tex
+    BYPRODUCTS slides
+    )
+
 add_executable(01-omp-parallel src/01-omp-parallel.cpp)
 target_link_libraries(01-omp-parallel PUBLIC OpenMP::OpenMP_CXX)
 

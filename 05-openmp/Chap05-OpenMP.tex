@@ -1,15 +1,19 @@
-\documentclass{beamer}
-
-\usetheme[
-        menuwidth={0.3\paperwidth}
-        ]{polymtl}
-
+\documentclass[10pt]{beamer}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\usepackage{tikz}
 \usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}
-%\usepackage[frenchb]{babel}
+\usepackage{graphicx}
+\usepackage{adjustbox}
+\usepackage{minted}
+\usepackage{booktabs}
+
+\usepackage[frenchb]{babel}
 \usepackage[babel]{csquotes}
 %\usepackage{lmodern}
 %\usepackage{palatino}
+
+
+\usetheme{metropolis}
 
 \setbeamercovered{transparent=20}
 \usepackage{adjustbox}
@@ -18,19 +22,12 @@
 
 \begin{document}
 
-\AtBeginSection[]{
-  \begin{frame}{OpenMP}
-  \tableofcontents[currentsection]
-  \end{frame} 
-}
-
-\title[]{OpenMP} 
+\title{OpenMP}
 \subtitle{Module 5 \\
-INF8601 Systèmes informatiques parallèles}
-\author{Michel Dagenais} 
-\date{\today} 
-\institute{\'Ecole Polytechnique de Montr\'eal \\ 
-  \vspace{-0.2em}{Département de génie informatique et génie logiciel} }
+INF8601 - Systèmes informatiques parallèles}
+\author{Sébastien Darche, Michel Dagenais}
+\date{24 Septembre 2025} 
+\institute{Polytechnique Montréal}
 
 \begin{frame}[plain]
   \titlepage
@@ -46,13 +43,9 @@ INF8601 Systèmes informatiques parallèles}
 
   \begin{itemize}
     \item Programmation en mémoire partagée, (Open Multi-Processing, OpenMP).
-
     \item API C, C++, Fortran.
-
     \item Sur Linux, Unix, AIX, Solaris, Mac OS X, et Microsoft Windows.
-
     \item Consortium sans but lucratif qui inclut AMD, IBM, Intel, Cray, HP, Fujitsu, NVIDIA, NEC, Microsoft, Texas Instruments, VMware, Oracle Corporation...
-
   \end{itemize}
 \end{frame}
 
@@ -68,6 +61,7 @@ INF8601 Systèmes informatiques parallèles}
     \item 2015, OpenMP 4.5 avec taskloop et ajustements
     \item 2018, OpenMP 5.0 avec loop, boucles plus flexibles
     \item 2020, OpenMP 5.1 avec scope et assume
+    \item 2024, OpenMP 6.0 qui améliore le calcul hétérogène
   \end{itemize}
 \end{frame}
 
@@ -75,15 +69,10 @@ INF8601 Systèmes informatiques parallèles}
 
   \begin{itemize}
     \item Standard complet et portable, disponible gratuitement.
-
     \item Utilisation de pragmas pour déclarer les sections à paralléliser, à synchroniser...(utilisé par le compilateur ou le pré-compilateur).
-
     \item Librairie de support à l'exécution, variables d'environnement.
-    
     \item Support pour le traçage et le débogage. 
-
     \item Parallélisme à grain fin qui peut exploiter les coeurs du CPU et le GPU.
-
     \item Axé sur la performance.
   \end{itemize}
 \end{frame}
@@ -92,10 +81,15 @@ INF8601 Systèmes informatiques parallèles}
 
   \begin{itemize}
     \item Compilateur parallélisant.
-
-    \item Intel Threading Building Blocks.
-
-    \item OpenMP permet de paralléliser un programme séquentiel graduellement avec une granularité très fine, et même à partir de 4.0 d'utiliser le GPU.
+    \item Frameworks de calcul parallèle
+    \begin{itemize}
+      \item Intel TBB
+      \item Kokkos
+      \item Raja
+      \item \texttt{std::par} dans C++17
+    \end{itemize}
+    \item OpenMP est exceptionnellement simple d'utilisation et permet même de faire des calculs sur
+    GPU "automatiquement"
   \end{itemize}
 \end{frame}
 
@@ -103,13 +97,9 @@ INF8601 Systèmes informatiques parallèles}
 
   \begin{itemize}
     \item Possibilité de créer un grand nombre de fils d'exécution, plus grand ou égal au nombre des processeurs (omp parallel), et de diviser le travail entre les fils (omp for, sections, tasks...).
-
     \item Tous les fils d'une région parallèle doivent passer par les mêmes sections de division du travail, même s'ils peuvent être dans des fonctions appelées.
-
     \item La synchronization de contrôle découle en bonne partie des pragmas insérés (section parallèles ou séquentielles, barrières).
-
     \item Variables peuvent être privées (copie locale à chaque fil) ou partagées.
-
     \item La synchronisation des données partagées doit se faire par verrous.
   \end{itemize}
 \end{frame}
@@ -119,14 +109,10 @@ INF8601 Systèmes informatiques parallèles}
 \begin{frame}[fragile]{Les pragmas}
 
   \begin{itemize}
-    \item Syntaxe: \verb|#pragma omp directive [clause...]|
-    
-    \item En C++ 11 ce peut être: \verb|[[ omp :: directive( directive-name, clause...) ]]|
-
+    \item Syntaxe: \texttt{\#pragma omp directive [clause...]}
+    \item En C++ 11 ce peut être: \\\texttt{[[ omp :: directive( directive-name, clause...) ]]}
     \item Directives: parallel, for, sections, single, parallel for, parallel sections, simd, target, declare variant, dispatch, requires, assume, nothing, error, teams, masked, loop, tile, unroll, cancel, cancellation point.
-
-    \item Clauses: shared, private, firstprivate, lastprivate, default, reduction, copyin, if, order, ordered, schedule, nowait, safelen, linear, aligned, collapse, device, map, num\_threads, proc\_bind, ...
-% allocate, filter, num\_teams, thread\_limit, uniform, untied, mergeable, in\_reduction, depend, detach.
+    \item Clauses: shared, private, firstprivate, lastprivate, default, reduction, copyin, if, ...
   \end{itemize}
 \end{frame}
 
@@ -144,33 +130,8 @@ INF8601 Systèmes informatiques parallèles}
   \end{itemize}
 \end{frame}
 
-% https://ecpannualmeeting.com/assets/overview/sessions/ff2020%20ECP-Tutorial-with-ECP-template.pdf
-% https://developers.redhat.com/blog/2021/05/03/new-features-in-openmp-5-0-and-5-1#openmp_5_1_features
-
 \begin{frame}[fragile]{Exemple}
-
-  \scriptsize
-  \begin{verbatim}
-#include <stdio.h>
-#include <omp.h>
-
-int main( int argc, char **argv ) {
-  int rank, size;
-  #pragma omp parallel private(rank)
-  { rank= omp_get_thread_num();
-    size= omp_get_num_threads();
-    printf( "Hello world! I'm %d of %d\n",rank, size );
-  }
-  return 0;
-}
-dorsal> export OMP_NUM_THREADS=4
-dorsal> gcc –fopenmp -o HelloWorld HelloWorld.c
-dorsal> ./HelloWorld
-Hello world! I'm 0 of 4
-Hello world! I'm 2 of 4
-Hello world! I'm 3 of 4
-Hello world! I'm 1 of 4
-  \end{verbatim}
+Démo 01 - 02
 \end{frame}
 
 \begin{frame}[fragile]{Teams}
@@ -1189,4 +1150,3 @@ sentenv OMP_PROC_BIND "spread,spread,close"
 \end{frame}
 
 \end{document}
-
