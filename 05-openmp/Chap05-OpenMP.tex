@@ -188,16 +188,8 @@ Démo 04
 
 \begin{frame}[fragile]{Exemple}
 
-Le fil 0 pourrait faire i = 0, 1, 2, 3, 4 et le fil 1 pourrait faire i = 5, 6, 7, 8, 9
-  \begin{minted}{cpp}
-#pragma omp parallel for default(none) 
-    private(i,j,sum) shared(m,n,a,b,c)
-for (i=0; i<m; i++) {
-  sum = 0.0;
-  for (j=0; j<n; j++) sum += b[i][j]*c[j];
-  a[i] = sum;
-}
-  \end{minted}
+Démo 05
+
 \end{frame}
 
 \begin{frame}[fragile]{Transformation de boucle}
@@ -240,7 +232,7 @@ structured-block-sequence
 \begin{frame}[fragile]{Exemple}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{cpp}
 int a[N], b[N];
 int x = 0;
 
@@ -254,7 +246,7 @@ for (int k = 0; k < N; k++) {
 }
 
 printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Tasks}
@@ -277,7 +269,7 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
 
 \begin{frame}[fragile]{Exemple}
 
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #pragma omp parallel
 { #pragma omp single
   { #pragma omp task
@@ -289,7 +281,7 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
     printf(“Bye\n“);
   }
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Single}
@@ -297,19 +289,19 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
   \begin{itemize}
     \item Cette section de code n'est exécutée que par un seul fil d'exécution.
   \end{itemize}
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #pragma omp parallel
 { #pragma omp single
   { ...
   }
   ...
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
 
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #pragma omp parallel
 { #pragma omp single
   printf("Beginning work1.\n");
@@ -320,7 +312,7 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
   printf("Finished work1 and beginning work2.\n");
   work2();
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Masked}
@@ -328,19 +320,19 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
   \begin{itemize}
     \item Cette section de code n'est exécutée que par les fils d'exécution spécifiés dans la clause \textit{filter}. Par défaut, sans clause filter, seul le fil d'exécution 0 est pris.
   \end{itemize}
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #pragma omp parallel
 { #pragma omp masked
   { ... }
   ...
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #pragma omp parallel
 { do
   { #pragma omp for private(i)
@@ -363,7 +355,7 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
     }
   } while( toobig > 0 );
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Scope}
