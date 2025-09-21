@@ -22,3 +22,6 @@ target_link_libraries(03-omp-teams PUBLIC OpenMP::OpenMP_CXX)
 
 add_executable(04-omp-sections src/04-omp-sections.cpp)
 target_link_libraries(04-omp-sections PUBLIC OpenMP::OpenMP_CXX)
+
+add_executable(05-omp-for src/05-omp-for.cpp)
+target_link_libraries(05-omp-for PUBLIC OpenMP::OpenMP_CXX)
