@@ -11,19 +11,18 @@ int main() {
     #pragma omp parallel sections
     {
         #pragma omp section
-        {
-            for(auto i = 0; i < 10; ++i) {
-                deque.push(i);
-            }
-            deque.push(-1);
-        }
-
-        #pragma omp section
         {   
             int i;
             while((i = deque.pop()) != -1) {
                 std::cout << "Received " << i << '\n';
             }
+        }
+        #pragma omp section
+        {
+            for(auto i = 0; i < 10; ++i) {
+                deque.push(i);
+            }
+            deque.push(-1);
         }
     }
     return 0;

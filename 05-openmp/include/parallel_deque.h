@@ -14,7 +14,7 @@ class parallel_deque {
     }
 
     T pop() {
-        T t;
+        T t{};
 
         #pragma omp critical (deque)
         {   
