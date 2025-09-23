@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 4.0.0)
 project(inf8601-openmp C CXX)
 
+set(CMAKE_CXX_FLAGS "-O2 -ggdb")
+
 find_package(OpenMP)
 
 include_directories(include)
@@ -26,5 +28,11 @@ target_link_libraries(04-omp-sections PUBLIC OpenMP::OpenMP_CXX)
 add_executable(05-omp-for src/05-omp-for.cpp)
 target_link_libraries(05-omp-for PUBLIC OpenMP::OpenMP_CXX)
 
-add_executable(06-omp-task src/06-omp-task.cpp)
-target_link_libraries(06-omp-task PUBLIC OpenMP::OpenMP_CXX)
+add_executable(06-omp-scan src/06-omp-scan.cpp)
+target_link_libraries(06-omp-scan PUBLIC OpenMP::OpenMP_CXX)
+
+add_executable(07-omp-task src/07-omp-task.cpp)
+target_link_libraries(07-omp-task PUBLIC OpenMP::OpenMP_CXX)
+
+add_executable(08-omp-simd src/08-omp-simd.cpp)
+target_link_libraries(08-omp-simd PUBLIC OpenMP::OpenMP_CXX)

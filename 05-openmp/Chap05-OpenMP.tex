@@ -77,7 +77,7 @@ INF8601 - Systèmes informatiques parallèles}
 \begin{frame}{Alternatives}
 
   \begin{itemize}
-    \item Compilateur parallélisant.
+    \item Compilateur parallélisant, \texttt{-march=native}
     \item Frameworks de calcul parallèle
     \begin{itemize}
       \item Intel TBB
@@ -230,23 +230,7 @@ structured-block-sequence
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
-
-  \scriptsize
-  \begin{minted}{cpp}
-int a[N], b[N];
-int x = 0;
-
-for (int k = 0; k < N; k++) a[k] = k + 1;
-
-#pragma omp parallel for simd reduction(inscan,+: x)
-for (int k = 0; k < N; k++) {
-  x += a[k];
-  #pragma omp scan inclusive(x)
-  b[k] = x;
-}
-
-printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
-  \end{minted}
+Démo 06
 \end{frame}
 
 \begin{frame}[fragile]{Tasks}
@@ -268,20 +252,7 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
-
-  \begin{minted}{cpp}
-#pragma omp parallel
-{ #pragma omp single
-  { #pragma omp task
-    { printf("Hello\n"); }
-
-    #pragma omp task
-    { printf("World\n"); }
-
-    printf(“Bye\n“);
-  }
-}
-  \end{minted}
+Démo 07
 \end{frame}
 
 \begin{frame}[fragile]{Single}
@@ -382,20 +353,7 @@ printf("x = %d, b[0:3] = %d %d %d\n", x, b[0], b[1], b[2]);
 \end{frame}
 
  \begin{frame}[fragile]{Exemple}
-
-  \begin{verbatim}
-#pragma omp parallel shared(x, y) private(ix_next, iy_next)
-{ #pragma omp critical (xaxis)
-  { ix_next = dequeue(x); }
-
-  work(ix_next, x);
-
-  #pragma omp critical (yaxis)
-  { iy_next = dequeue(y); }
-
-  work(iy_next, y);
-}
-  \end{verbatim}
+Démo \texttt{parallel\_deque}
 \end{frame}
 
 \begin{frame}{Synchronisation de contrôle}
@@ -441,21 +399,7 @@ x = 2;
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
-
-  \begin{verbatim}
-#pragma omp parallel
-{ #pragma omp single
-  { #pragma omp task
-    { printf("Hello\n"); }
-
-    #pragma omp task
-    { printf("World\n"); }
-
-    #pragma omp taskwait
-    printf(“Bye\n“);
-  }
-}
-  \end{verbatim}
+Démo 07
 \end{frame}
 
 \begin{frame}[fragile]{Atomic}
@@ -717,7 +661,7 @@ Task 1; Task 2; Task 3; Task 4: c = 5;
 \begin{frame}[fragile]{Exemple}
 
   \small
-  \begin{verbatim}
+  \begin{minted}{cpp}
 float sum = 0.0;
 int i, i0;
 
@@ -728,7 +672,7 @@ int i, i0;
       #pragma omp parallel for reduction(+:sum)
       for (i=i0; i< min(i0+block_size,N); i++)
         sum += B[i] * C[i];
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Distribute parallel for}
@@ -762,7 +706,7 @@ int i, i0;
 \begin{frame}[fragile]{Exemple}
 
   \small
-  \begin{verbatim}
+  \begin{minted}{cpp}
 float x[N], y[N];
 float a = 2.0;
 
@@ -770,33 +714,33 @@ for(int i=0;i<N;i++){ x[i]=i; y[i]=0;}
 
 #pragma omp parallel loop
 for(int i = 0; i < N; ++i) y[i] = a*x[i] + y[i];
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{cpp}
 // ecpannualmeeting.com 2020 Tutorial-with-ECP-template.pdf
 #pragma omp target teams distribute // Now
 for (i=0; i<N; ++i)
   #pragma omp parallel for
   for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
 
-#pragma omp target teams loop bind(teams) // Very soon
+#pragma omp target teams loop bind(teams)
 for (i=0; i<N; ++i)
   #pragma omp loop bind(thread)
   for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
 
-#pragma omp target // Soon
+#pragma omp target
   #pragma omp loop bind(thread) collapse(2)
   for (i=0; i<N; ++i)
     for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
     
-#pragma omp loop bind(thread) collapse(2) // Later
+#pragma omp loop bind(thread) collapse(2) 
 for (i=0; i<N; ++i)
   for (j=0; j<N; ++j) x[j+N*i] *= 2.0;
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Taskloop}
@@ -828,7 +772,7 @@ loop-nest
 \begin{frame}[fragile]{Exemple}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #define N 10000
 #define M 1024
 #pragma omp declare target
@@ -851,13 +795,13 @@ float accum(void) {
   }
   return tmp;
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{cpp}
 #define THRESHOLD1 1000000
 #define THRESHOLD2 1000
 
@@ -875,35 +819,7 @@ void vec_mult(float *p, float *v1, float *v2, int N) {
   }
   output(p, N);
 }
-  \end{verbatim}
-\end{frame}
-
-\begin{frame}[fragile]{Exemple}
-
-  \scriptsize
-  \begin{verbatim}
-extern void init(float *, float *, int);
-extern int maybe_init_again(float *, int);
-extern void output(float *, int);
-void vec_mult(float *p, float *v1, float *v2, int N) {
-  int i;
-  init(v1, v2, N);
-  #pragma omp target data map(to: v1[:N], v2[:N]) map(from: p[0:N])
-  { int changed;
-    #pragma omp target
-    #pragma omp parallel for
-    for (i=0; i<N; i++) p[i] = v1[i] * v2[i];
-    changed = maybe_init_again(v1, N);
-    #pragma omp target update if (changed) to(v1[:N])
-    changed = maybe_init_again(v2, N);
-    #pragma omp target update if (changed) to(v2[:N])
-    #pragma omp target
-    #pragma omp parallel for
-    for (i=0; i<N; i++) p[i] = p[i] + (v1[i] * v2[i]);
-  }
-  output(p, N);
-}
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \section{Fonctions et outils de support}
@@ -974,7 +890,7 @@ void vec_mult(float *p, float *v1, float *v2, int N) {
     \item Définir les \textit{places} où peuvent être assignés les fils d'exécution.
   \end{itemize}
   
-  \begin{verbatim}
+  \begin{minted}{bash}
 OMP_PLACES = threads/cores/ll_caches/numa_domains/sockets
 OMP_PLACES = place : length : stride, ...
 OMP_PROC_BIND = true/false/primary/close/spread
@@ -985,12 +901,12 @@ setenv OMP_PLACES "{0:4}:4:4" # 4 places de 4 fils
 setenv OMP_PLACES "{0:4},{4:4},{8:4},{12:4}" # idem
 setenv OMP_PLACES \
   "{0,1,2,3},{4,5,6,7},{8,9,10,11},{12,13,14,15}"
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple}
 
-  \begin{verbatim}
+  \begin{minted}{bash}
 setenv OMP_PLACES "{0},{1},{2}, … {29},{30},{31}"
 # setenv OMP_PLACES threads (same as above if 32 threads)
 sentenv OMP_NUM_THREADS "8,2,2"
@@ -999,7 +915,7 @@ sentenv OMP_PROC_BIND "spread,spread,close"
 #pragma omp parallel // spread, 8 threads
   #pragma omp parallel // spread, 2 threads
     #pragma omp parallel // close, 2 threads
-  \end{verbatim}
+  \end{minted}
   \tiny
   \begin{tabular}{|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|l|}
   \hline
@@ -1032,19 +948,19 @@ sentenv OMP_PROC_BIND "spread,spread,close"
 \begin{frame}[fragile]{Exemple}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{cpp}
 # 4 sockets of 6 cores with 2 hyperthreads, round-robbin numbering among s/c/ht
 
-# Thread per core
+// Thread per core
 #pragma omp parallel num_threads(4*6) proc_bind(spread)
 
-# Thread per socket
+// Thread per socket
 #pragma omp parallel num_threads(4) proc_bind(spread)
-  # Thread per core
+  // Thread per core
   #pragma omp parallel num_threads(6) proc_bind(spread)
-    # Thread per hyperthread
+    // Thread per hyperthread
     #pragma omp parallel num_threads(2) proc_bind(close)
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Librairies de support}
