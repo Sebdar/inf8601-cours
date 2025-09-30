@@ -27,7 +27,7 @@ int main() {
     printf("Context created\n");
 
 
-    size_t buf_size = 4096u;
+    size_t buf_size = sizeof(float) * 4096u;
     cl_mem buf_input = clCreateBuffer(context, CL_MEM_READ_ONLY, buf_size, NULL, &result);
     if(result != CL_SUCCESS) {
         return -1;

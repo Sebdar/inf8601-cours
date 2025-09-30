@@ -450,7 +450,7 @@ if(error != CL_SUCCESS) { ErrorExit(error); }
 \begin{frame}[fragile]{Exécution de fonctions OpenCL}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 /* Mettre en queue sur global size par groupe de local size */
 cl_int clEnqueueNDRangeKernel (cl_command_queue command_queue,
     cl_kernel kernel, cl_uint work_dim, const size_t
@@ -470,7 +470,7 @@ cl_int clEnqueueNativeKernel (cl_command_queue command_queue,
     cl_uint num_mem_objects, const cl_mem *mem_list,
     const void **args_mem_loc, cl_uint num_events_in_wait_list,
     const cl_event *event_wait_list,cl_event *event)
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Synchronisation par événements}
@@ -487,7 +487,7 @@ cl_int clEnqueueNativeKernel (cl_command_queue command_queue,
 \begin{frame}[fragile]{Synchronisation par événements}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 /* Créer un événement sur lequel faire dépendre */
 cl_event clCreateUserEvent (cl_context context, cl_int
     *errcode_ret)
@@ -506,7 +506,7 @@ cl_int clSetEventCallback (cl_event event, cl_int
     *pfn_event_notify)(cl_event event, cl_int
     event_command_exec_status, void *user_data),
     void *user_data)
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Barrières}
@@ -527,7 +527,7 @@ cl_int clSetEventCallback (cl_event event, cl_int
 \begin{frame}[fragile]{Barrières}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 /* Indique que toutes les commandes antérieures sont 
    terminées */
 cl_int clEnqueueMarker (cl_command_queue command_queue,
@@ -540,7 +540,7 @@ cl_int clEnqueueBarrier (cl_command_queue command_queue)
 /* Attend après les événements spécifiés avant de poursuivre */
 cl_int clEnqueueWaitForEvents (cl_command_queue command_queue,
     cl_uint num_events, const cl_event *event_list)
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Divers}
@@ -557,7 +557,7 @@ cl_int clEnqueueWaitForEvents (cl_command_queue command_queue,
 \begin{frame}[fragile]{Divers}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 /* Extraire l'information sur le temps d'exécution d'un
    événement */
 cl_int clGetEventProfilingInfo (cl_event event,
@@ -570,13 +570,13 @@ cl_int clFlush (cl_command_queue command_queue)
 /* Attendre que toutes les commandes en queue soient 
    terminées */
 cl_int clFinish (cl_command_queue command_queue)
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple complet: exécution}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 error = clSetKernelArg(abc_kernel, 0, sizeof(cl_mem),
     &buffer_a);
 error |= clSetKernelArg(abc_kernel, 1, sizeof(cl_mem),
@@ -594,7 +594,7 @@ if(error != CL_SUCCESS) { ErrorExit(error); }
 
 clEnqueueReadBuffer(queue, buffer_c, CL_TRUE, 0, buffer_size, 
     c, 0, NULL, NULL);
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Exemple complet: finalisation}
@@ -631,7 +631,7 @@ clReleaseMemObject(buffer_c);
 \begin{frame}[fragile]{Types OpenCL}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 float4 pos = (float4)(1.0f, 2.0f, 3.0f, 4.0f);
 pos.xw = (float2)(5.0f, 6.0f);
 pos.xyz = (float3)(3.0f, 5.0f, 9.0f);
@@ -651,7 +651,7 @@ float f;
 int i = convert_int(f);
 
 union{ float f; uint u; double d;} u;
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Opérations mathématiques}
@@ -668,7 +668,7 @@ union{ float f; uint u; double d;} u;
 \begin{frame}[fragile]{Opérations mathématiques}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 float4 u, v;
 float f;
 
@@ -683,7 +683,7 @@ float length(floatn p);
 float8 vload8(size_t offset, const __local float *p);
 
 void vstore8(float8 data, size_t offset, __local float *p);
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Attributs}
@@ -702,7 +702,7 @@ void vstore8(float8 data, size_t offset, __local float *p);
 \begin{frame}[fragile]{Zones mémoire}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 __global float4 *color;
 
 typedef struct {
@@ -718,7 +718,7 @@ __kernel void my_func(...) {
   float c;
   ...
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Synchronisation}
@@ -744,7 +744,7 @@ __kernel void my_func(...) {
 \begin{frame}[fragile]{Exemple complet: code OpenCL} 
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 /* Simple addition vectorielle c = a + b */
 
 __kernel void abc_kernel (__global const float* buffer_a,
@@ -761,7 +761,7 @@ __kernel void abc_kernel (__global const float* buffer_a,
 
   if (id < nb) buffer_c[id] = buffer_a[id] + buffer_b[id];
 }
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \section{Optimisations}
@@ -784,7 +784,7 @@ __kernel void abc_kernel (__global const float* buffer_a,
 \begin{frame}[fragile]{Accès en mémoire}
 
   \scriptsize
-  \begin{verbatim}
+  \begin{minted}{c}
 /* c[m][n], OpenCL organisé en m*n */
 
 int x = get_global_id(0);
@@ -803,7 +803,7 @@ c[x][y] = a[x] * b[y];
    pour y, de manière à faire des accès à des cases mémoire
    consécutives en même temps qui pourront être regroupés.
    Peut être plusieurs fois plus rapide! */
-  \end{verbatim}
+  \end{minted}
 \end{frame}
 
 \begin{frame}{Maximisation du nombre d'items}
