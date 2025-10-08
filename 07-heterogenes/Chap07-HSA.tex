@@ -1,0 +1,254 @@
+\documentclass[10pt]{beamer}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\usepackage{tikz}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{adjustbox}
+\usepackage{minted}
+\usepackage{booktabs}
+
+\usepackage[frenchb]{babel}
+\usepackage[babel]{csquotes}
+\usepackage{adjustbox}
+%\usepackage{lmodern}
+%\usepackage{palatino}
+
+
+\usetheme{metropolis}
+
+\graphicspath{{../../img}}
+
+\begin{document}
+
+\AtBeginSection[]{
+  \begin{frame}{Architectures hétérogènes}
+  \tableofcontents[currentsection]
+  \end{frame} 
+}
+
+\title[]{Architectures hétérogènes} 
+\subtitle{Module 7 \\
+INF8601 Systèmes informatiques parallèles}
+\author{Sébastien Darche, Michel Dagenais, \\\texttt{< sebastien.darche} \textit{at} \texttt{polymtl.ca >}} 
+\date{\today} 
+\institute{Polytechnique de Montréal}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\begin{frame}{Sommaire}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{Matériel spécialisé pour le calcul scientifique}
+
+  \begin{itemize}
+    \item Co-processeur mathématique en option dans les années 1970 et 1980 (Intel 80486 avec unité point flottant de série en 1989).
+
+    \item Unités vectorielles avec plusieurs ALU (e.g. FP Add/Substract, FP Multiply, FP Divide, Integer), chacun en pipeline, populaires dans les années 1970 et 1980 (IBM 3090 en 1985, CRAY YMP en 1988).
+
+    \item Co-processeurs parallèles (IBM cell processor / Sony PS3 en 2006, Tilera, Adapteva...).
+
+    \item Circuits intégrés sur mesure (ASIC / FPGA) pour des applications spécifiques.
+
+    \item Co-processeurs pour les entrées-sorties ou le traitement de signal (cartes réseau, signal cellulaire...).
+
+    \item Co-processeurs hautement parallèles pour le traitement graphique (GPU), le calcul scientifique (GPGPU) et l'apprentissage machine.
+  \end{itemize}
+\end{frame}
+
+\section{Processeurs vectoriels}
+
+\begin{frame}{Processeur vectoriel}
+
+  \begin{itemize}
+    \item Plusieurs registres vectoriels (e.g. 8 registres de 64 éléments de 64 bits) et scalaires.
+
+    \item Plusieurs ALU (e.g. FP Add/Substract, FP Multiply, FP Divide, Integer), chacun en pipeline (un élément par cycle).
+
+    \item Chargement et rangement à partir de la mémoire, en pipeline (un élément par cycle), avec un décalage de 1 ou plus entre les éléments, ou par vecteur d'indirection.
+
+    \item Registre de masque (64 bits) pour activer les opérations ou recevoir le résultat d'une comparaison.
+
+    \item Registre de longueur qui détermine le nombre d'éléments à traiter (1-64).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Processeur vectoriel}
+
+  \begin{center} %
+    \adjustimage{max width=\textwidth, max height=0.9\textheight}{DLXVFP.jpg} \\
+  \end{center}
+
+\end{frame}
+
+\begin{frame}[fragile]{Caractéristiques}
+
+  \begin{itemize}
+    \item Réduction du nombre d'instructions exécutées (instruction vectorielle versus boucle).
+
+    \item Plusieurs instructions vectorielles peuvent s'exécuter presqu'en même temps par chaînage si elles sont indépendantes ou si le résultat d'une est directement pris par l'autre au cycle suivant avec le matérial adéquat.
+
+    \item Possibilité de 2 ou 4 voies pour chaque ALU, opérant sur 2 ou 4 éléments en parallèle.
+
+    \item Attention à nb\_elements / nb\_voies versus profondeur du pipeline.
+
+    \item Goûlot d'étranglement vers la mémoire?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Caractéristiques}
+
+  \begin{center} %
+    \adjustimage{max width=\textwidth, max height=0.9\textheight}{DLXVChain.jpg} \\
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Répertoire d'instructions VMIPS}
+
+  \begin{center} %
+    \adjustimage{max width=\textwidth, max height=0.9\textheight}{DLXVInstr.png} \\
+  \end{center}
+\end{frame}
+
+\begin{frame}{Vectoriser une boucle}
+
+  \begin{itemize}
+    \item Découper la boucle en morceaux de 64 éléments + un morceau de moins de 64 éléments.
+
+    \item Trouver les opérations vectorielles.
+
+    \item Gérer les registres vectoriels.
+
+    \item Remplacer les opérations conditionnelles par des masques de contrôle des opérations vectorielles.
+
+    \item Fonctionne bien pour des boucles simples d'algèbre vectorielle.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple: découper en boucles de 64}
+
+   \begin{verbatim}
+for(i = 0; I < n; i++) Y[i] = a * X[i] + Y[i];
+
+
+low = 0;
+vl = (n % 64)
+
+for(j = 0; j <= (n / 64); j++) {
+  for(i = low; i < (low + vl); i++) {
+    Y[i] = a * X[i] + Y[i];
+  }
+  low = low + vl;
+  vl = 64;
+}
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple: conditions}
+
+  \begin{verbatim}
+for(i = 0; i < 64; i++) {
+  if(X[i] != 0) X[i] = X[i] - Y[i];
+}
+
+
+LV V1, Rx
+LV V2, Ry
+L.D F0, #0
+SNEVS.D V1, F0
+SUBVV.D V1, V1, V2
+SV V1, Rx
+  \end{verbatim}
+\end{frame}
+
+\begin{frame}{Instructions multimédia}
+
+  \begin{itemize}
+    \item Un peu de vectorisation opportuniste, extensions Intel x86.
+
+    \item MMX en 1996, registre FP 64 bits réutilisé pour 8 opérations de 8 bits ou 4 opérations de 16 bits.
+
+    \item SSE en 1999, 2001, 2004, 2007, registres 128 bits pour 16 opérations de 8 bits, 8 de 16 bits, 4 de 32 bits, 2 de 64 bits, 4 de 32 bits FP, 2 de 64 bits FP.
+
+    \item AVX en 2010, registres 256 bits, opérations sur 4 éléments FP double précision (64 bits) ou sur plus d'élements de 8, 16 ou 32 bits.
+  \end{itemize}
+\end{frame}
+
+\section{Processeurs graphiques}
+
+\begin{frame}{Les processeurs graphiques}
+
+  \begin{itemize}
+    \item Puissants et peu dispendieux, super vecteur à rabais?
+
+    \item Section de code parallélisable (grid) décomposée en bloc de fils (thread block).
+
+    \item Chaque bloc est exécuté sur un processeur SIMD du GPU.
+
+    \item Un processeur SIMD possède plusieurs (e.g. 32) ALU (thread processor) et gère plusieurs fils simultanément.
+
+    \item Le processeur SIMD choisit la prochaine instruction du prochain fil prêt et l'exécute sur ses 32 ALU.
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]{Unité de calcul CDNA2}
+
+  \begin{center} %
+    \adjustimage{max width=\textwidth, max height=0.9\textheight}{amdgcn-cu.png} \\
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]{Unité de calcul CDNA2}
+
+  \begin{center} %
+    \adjustimage{max width=\textwidth, max height=0.9\textheight}{amdgcn-block.png} \\
+  \end{center}
+\end{frame}
+
+\begin{frame}{La mémoire sur les GPU}
+
+  \begin{itemize}
+    \item Mémoire privée: pour chaque ALU (résultats intermédiaires).
+
+    \item Mémoire locale: mémoire locale à chaque processeur SIMD.
+
+    \item Mémoire GPU: mémoire accessible à tous les processeurs SIMD de même qu'au processeur hôte.
+
+    \item Un circuit filtre les accès mémoire pour regrouper les accès à des adresses consécutives et les faire en pipeline.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Les instructions PTX}
+
+  \begin{itemize}
+    \item Programmes en PTX (NVidia), convertis en code machine pour la carte spécifique au moment de l'exécution.
+
+    \item Opérations arithmétiques (s32, u32, f32, s64, u64, f64), transcendentales (sqrt, sin...), logiques, accès mémoire, opérations atomiques, contrôle (branch, call, ret, bar, exit).
+
+    \item Toutes les instructions peuvent être conditionnelles et dépendre d'un bit d'activation dans un registre prédicat.
+
+    \item Lorsque certains ALU font une branche IF, les autres sont inactifs et sont réactivés pour le ELSE.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Discussion sur les GPU}
+
+  \begin{itemize}
+    \item Une instruction vectorielle avec un élément par ALU, plutôt qu'une instruction vectorielle par ALU pendant 64 cycles en pipeline.
+
+    \item Les nombreux fils (comme le Hyperthreading) compensent pour la latence d'accès mémoire.
+
+    \item Modèle de programmation assez contraignant, plus difficile à optimiser.
+
+    \item Peu d'outils pour analyser la performance ou déboguer.
+
+    \item Matériel puissant et peu dispendieux.
+  \end{itemize}
+\end{frame}
+
+\end{document}
