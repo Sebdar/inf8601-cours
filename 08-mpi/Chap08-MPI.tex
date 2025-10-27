@@ -1,0 +1,693 @@
+\documentclass[10pt]{beamer}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\usepackage{tikz}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{adjustbox}
+\usepackage{minted}
+\usepackage{booktabs}
+
+\usepackage[frenchb]{babel}
+\usepackage[babel]{csquotes}
+\usepackage{adjustbox}
+%\usepackage{lmodern}
+%\usepackage{palatino}
+
+
+\usetheme{metropolis}
+
+\graphicspath{{../../img}}
+
+\begin{document}
+
+\AtBeginSection[]{
+  \begin{frame}{Message Passing Interface (MPI)}
+  \tableofcontents[currentsection]
+  \end{frame} 
+}
+
+\title[]{Message Passing Interface (MPI)} 
+\subtitle{Module 8 \\
+INF8601 - Systèmes informatiques parallèles}
+\author{Sébastien Darche, Michel Dagenais\\\texttt{< sebastien.darche} \textit{at} \texttt{polymtl.ca >}} 
+\date{29 Octobre 2025} 
+\institute{Polytechnique Montréal}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\begin{frame}{Sommaire}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+
+\begin{frame}{Historique}
+
+  \begin{itemize}
+    \item Discuté lors d'un workshop à Williamsburg en avril 1992, planifié à Supercomputing en novembre 1992.
+
+    \item Version préliminaire présentée à Supercomputing 1993.
+
+    \item Version finale MPI 1.0 en juin 1994, plus de 80 personnes et 40 organisations ont été impliquées (vendeurs, universités, grands laboratoires...).
+
+    \item MPI 1.1 en 1995, 2.0 en 1997, 1.3 en 2008 (finale), 2.1 en 2008, 2.2 en 2009.
+
+    \item MPI 3.0 en septembre 2012, 3.1 en juin 2015 (mémoire partagée, assertions, sessions, MPI+thread/OpenCL, multi-langage, interface pour outils debug/prof).
+
+    \item MPI 4.0 en juin 2021 (fonctions avec l'argument longueur de 64 bits, fonctions \emph{init} et \emph{start} pour les communications collectives, communications partitionnées).
+
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Objectifs}
+
+  \begin{itemize}
+    \item API de programmation parallèle sur multi-ordinateur.
+
+    \item Librairie pour gérer les communications.
+
+    \item Bénéficie de l'expérience gagnée avec les systèmes antérieurs (PVM, LINDA).
+
+    \item Ensemble cohérent de fonctions permettant une interface simple tout en s'assurant que l'implémentation sous-jacente puisse être efficace.
+
+    \item Interopérabilité souhaitable avec OpenMP et OpenCL.
+
+    \item Multiples fils d'exécution? Tolérance aux pannes?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Public cible}
+
+  \begin{itemize}
+    \item Toutes les grandes grappes de calcul.
+
+    \item Laboratoires gouvernementaux (modélisation météorologique ou nucléaire) ou industriels (analyse de réseaux de transmission chez Hydro-Québec, Modélisation par éléments finis chez Bombardier ou Andritz).
+
+    \item Versions optimisées et outils offerts par les grands fournisseurs de matériel (Intel, IBM...).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Un premier programme}
+
+  \begin{minted}{cpp}
+#include "mpi.h"
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+  MPI_Init( &argc, &argv );
+  printf( "Hello world\n" );
+  MPI_Finalize();
+  return 0;
+}
+
+mpicc --mpilog --mpitrace -o hello hello.c
+
+mpirun -np 2 hello
+  \end{minted}
+\end{frame}
+
+\section{Fonctions de base}
+
+\begin{frame}{Fonctions de base}
+
+  \begin{itemize}
+    \item Initialiser la librairie.
+
+    \item Utiliser le communicateur par défaut MPI\_COMM\_WORLD.
+
+    \item Demander le nombre d'éléments N et son rang (0 à N-1).
+
+    \item Finaliser la librairie.
+
+    \item Avec mpirun, le même programme s'exécute sur N noeuds mais chaque instance fait un travail différent en se basant sur son rang qui la différencie.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,containsverbatim]{Contexte}
+
+  \begin{minted}[fontsize=\small]{cpp}
+#include "mpi.h"
+#include <stdio.h>
+
+int main(int argc, char **argv) {
+  int rank, size;
+  MPI_Init( &argc, &argv );
+  MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+  MPI_Comm_size( MPI_COMM_WORLD, &size );
+  printf( "Hello world! I'm %d of %d\n",
+      rank, size );
+  MPI_Finalize();
+  return 0;
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}{Le contenu des messages}
+
+  \begin{itemize}
+    \item Adresse, type des éléments et nombre, plutôt que adresse et nombre d'octets.
+
+    \item Types définis récursivement pour représenter n'importe quelle structure de donnée.
+
+    \item Permet de spécifier les données telles qu'elles sont.
+
+    \item Minimise la possibilité d'erreur sur la longueur.
+
+    \item Permet au système de faire les conversions si requis (e.g. petit ou gros boutien).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Les types MPI}
+
+  \begin{itemize}
+    \item Primitifs: MPI\_CHAR, MPI\_UNSIGNED\_CHAR (and SHORT, INT, LONG), MPI\_FLOAT, MPI\_DOUBLE, MPI\_LONG\_DOUBLE...
+
+    \item Séquences: MPI\_TYPE\_CONTIGUOUS (longueur), MPI\_TYPE\_VECTOR / MPI\_TYPE\_HVECTOR (longueur, déplacement en éléments / octets), MPI\_TYPE\_INDEXED / MPI\_TYPE\_HINDEXED (vecteur de longueurs, vecteur de déplacements en éléments / octets).
+
+    \item Agrégation: MPI\_TYPE\_CREATE\_STRUCT
+
+    \item Calcul de la position: MPI\_TYPE\_COMMIT
+
+    \item Divers: MPI\_TYPE\_FREE, MPI\_GET\_ADRESS, MPI\_TYPE\_CREATE\_SUBARRAY, MPI\_TYPE\_CREATE\_DARRAY, MPI\_PACK, MPI\_UNPACK
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Description de types}
+
+  \scriptsize
+  \begin{minted}{cpp}
+struct Element {
+  unsigned temp;
+  double force[3];
+  char st;
+} e_t;
+
+MPI_Datatype ElementType;
+
+MPI_Datatype ElementFieldTypes[3] = 
+{ MPI_UNSIGNED, MPI_DOUBLE, MPI_CHAR };
+
+int ElementFieldLength[3] = {1, 3, 1};
+
+MPI_Aint ElementFieldPosition[3] = 
+// { 0, sizeof(double), 4 * sizeof(double) };
+{ offsetof(e_t, temp), offsetof(e_t, force), offsetof(e_t, st)};
+
+MPI_Type_create_struct(3, ElementFieldLength,
+    ElementFieldPosition, ElementFieldTypes, &ElementType);
+MPI_Type_commit(&ElementType);
+  \end{minted}
+\end{frame}
+
+\section{Envoi de messages}
+
+\begin{frame}{Envoi de messages}
+
+  \begin{itemize}
+    \item MPI\_SEND(buf, count, datatype, dest, tag, comm) bloque sur l'envoi d'un message à dest.
+
+    \item MPI\_RECV(buf, count, datatype, source, tag, comm, status) bloque sur l'attente d'un message de source avec tag ou MPI\_ANY\_SOURCE, MPI\_ANY\_TAG.
+
+    \item MPI\_SENDRECV(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm, status) aller-retour comme pour un appel de procédure.
+
+    \item MPI\_SENDRECV\_REPLACE(buf, count, datatype, dest, sendtag, source, recvtag, comm, status) échange de données.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Envois non bloquants}
+
+  \begin{itemize}
+    \item MPI\_ISEND(buf, count, datatype, dest, tag, comm, request) l'envoi est demandé, buf ne doit plus être accédé jusqu'à ce que l'envoi soit terminé.
+
+    \item MPI\_IRECV(buf, count, datatype, source, tag, comm, request) la réception est demandée, buf ne peut être accédé avant que la réception ne soit terminée.
+
+    \item MPI\_WAIT(request, status), MPI\_TEST(request, flag, status) ou MPI\_REQUEST\_GET\_STATUS(request, flag, status) et MPI\_REQUEST\_FREE(request) permettent de savoir lorsque la requête est terminée.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Attente multiple}
+
+  \begin{itemize}
+    \item MPI\_WAITANY(count, array\_of\_request, index, status), MPI\_TESTANY(count, array\_of\_request, index, flag, status) permet d'attendre après une de plusieurs requêtes.
+
+    \item MPI\_WAITALL(count, array\_of\_request, array\_of\_status), MPI\_TESTALL(count, array\_of\_request, flag, array\_of\_status) permet de vérifier toutes les requêtes.
+
+    \item MPI\_WAITSOME(incount, array\_of\_request, outcount, array\_of\_index, array\_of\_status), MPI\_TESTSOME(count, array\_of\_request, array\_of\_index, array\_of\_status) permet de vérifier une ou plusieurs requêtes.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Autres fonctions sur les requêtes}
+
+  \begin{itemize}
+    \item MPI\_PROBE(source, tag, comm, status), MPI\_IPROBE(source, tag, comm, flag, status), attend ou vérifie si un message est disponible.
+
+    \item MPI\_CANCEL(request) annule une opération, MPI\_TEST\_CANCELLED(status, flag) permet de le vérifier.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Communications pré-définies}
+
+  \begin{itemize}
+    \item MPI\_SEND\_INIT(buf, count, datatype, dest, tag, comm, request), MPI\_RECV\_INIT(buf, count, datatype, source, tag, comm, request), spécifie les arguments pour un envoi/réception à venir, et à répéter.
+
+    \item MPI\_START(request), MPI\_STARTALL(count, array\_of\_request), démarre la requête.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Autres types d'envoi}
+
+  \begin{itemize}
+    \item MPI\_BSEND: buffered. Le contenu est copié avant d'être envoyé.
+
+    \item MPI\_SSEND: synchronous. Ne peut se compléter avant que le receveur ait commencé à recevoir le message.
+
+    \item MPI\_RSEND: ready, le receveur doit déjà être en attente du message. Ceci peut permettre de faire l'envoi en étant assuré qu'un tampon est prêt à l'autre bout.
+
+    \item MPI\_IBSEND, MPI\_ISSEND, MPI\_IRSEND, MPI\_BSEND\_INIT, MPI\_SSEND\_INIT, MPI\_RSEND\_INIT.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Gestion manuelle des tampons}
+
+  \begin{itemize}
+    \item MPI\_BUFFER\_ATTACH(buffer, size) spécifier manuellement l'espace à utiliser pour les tampons et conséquemment sa taille.
+
+    \item MPI\_BUFFER\_DETACH(buffer, size).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Multiplication de matrice}
+
+  \scriptsize
+  \begin{minted}{cpp}
+#include "mpi.h"
+#include <stdio.h>
+#include <stdlib.h>
+#define RA 62
+#define CA 15
+#define CB 7
+#define ROOT 0
+#define ROOT_A_FEUILE 1
+#define FEUILLE_A_ROOT 2
+
+int main (int argc, char *argv[]) {
+  int size, rank, src, dest, mtype;
+  int rangees, moyenne, extra, offset, i, j, k, rc;
+  double a[RA][CA], b[CA][CB], c[RA][CB];
+  MPI_Status status;
+
+  MPI_Init(&argc,&argv);
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  MPI_Comm_size(MPI_COMM_WORLD,&size);
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Multiplication de matrice}
+
+  \scriptsize
+  \begin{minted}{cpp}
+  if (rank == ROOT) { 
+    moyenne = RA / (size - 1); extra = RA % (size - 1);
+    offset = 0; mtype = ROOT_A_FEUILLE;
+    for (dest=1; dest<=(size - 1); dest++) { 
+      rangees = (dest <= extra) ? moyenne+1 : moyenne;
+      MPI_Send(&offset,1,MPI_INT,dest,mtype,MPI_COMM_WORLD);
+      MPI_Send(&rangees,1,MPI_INT,dest,mtype,MPI_COMM_WORLD);
+      MPI_Send(&a[offset][0],rangees*CA,MPI_DOUBLE,dest, 
+          mtype, MPI_COMM_WORLD);
+      MPI_Send(&b,CA*CB,MPI_DOUBLE,dest,mtype,MPI_COMM_WORLD);
+      offset = offset + rangees;
+    }
+    mtype = FEUILLE_A_ROOT;
+    for (i=1; i<=(size - 1); i++) { 
+      src = i;
+      MPI_Recv(&offset,1,MPI_INT,src,mtype,MPI_COMM_WORLD,&status);
+      MPI_Recv(&rangees,1,MPI_INT,src,mtype,MPI_COMM_WORLD,&status);
+      MPI_Recv(&c[offset][0],rangees*CB,MPI_DOUBLE,src,mtype,
+          MPI_COMM_WORLD,&status);
+    }
+  }
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Multiplication de matrice}
+
+  \scriptsize
+  \begin{minted}{cpp}
+  if (rank > ROOT) { 
+    mtype = ROOT_A_FEUILLE;
+    MPI_Recv(&offset,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD,&status);
+    MPI_Recv(&rangees,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD,&status);
+    MPI_Recv(&a,rangees*CA,MPI_DOUBLE,ROOT,mtype,MPI_COMM_WORLD, &status);
+    MPI_Recv(&b,CA*CB,MPI_DOUBLE,ROOT,mtype,MPI_COMM_WORLD,&status);
+    for (k=0; k<CB; k++)
+      for (i=0; i<rangees; i++) { 
+        c[i][k] = 0.0;
+        for (j=0; j<CA; j++) c[i][k]=c[i][k]+a[i][j]*b[j][k];
+      }
+    mtype = FEUILLE_A_ROOT;
+    MPI_Send(&offset,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD);
+    MPI_Send(&rangees,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD);
+    MPI_Send(&c,rangees*CB,MPI_DOUBLE,ROOT,mtype,MPI_COMM_WORLD);
+  }
+  MPI_Finalize();
+}
+  \end{minted}
+\end{frame}
+
+\section{Communications globales}
+
+\begin{frame}[fragile]{Communications globales}
+
+  \begin{center}
+    \adjustimage{max width=\textwidth, max height=0.9\textheight}{MPIScatter.png} \\
+  \end{center}
+\end{frame}
+
+\begin{frame}{Communications globales}
+
+  \begin{itemize}
+    \item MPI\_BARRIER(comm) bloque jusqu'à ce que tous les membres du groupe aient appelé cette fonction.
+
+    \item MPI\_BCAST(buffer, count, datatype, root, comm) est appelé par tous et le contenu de buffer sur le processus de rang root est copié à tous les autres.
+
+    \item MPI\_GATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, comm) est équivalent à un send de chaque processus (incluant root) et à n receive de root avec l'adresse de réception calculée recvbuf + i * count.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Communications globales}
+
+  \begin{itemize}
+    \item MPI\_SCATTER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, root, comm) est équivalent à root qui fait n send de sendbuf + i * sendcount et chaque processus qui fait un receive.
+
+    \item MPI\_GATHERV, MPI\_SCATTERV, viennent avec un vecteur de recvcount ou sendcount et un vecteur de positions afin de recevoir ou d'envoyer des messages de taille différente à une position variable.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{De tous à tous}
+
+  \begin{itemize}
+    \item MPI\_ALLGATHER(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm) est comme un gather excepté que tous les processus, il n'y a pas de root, recoivent toutes les informations. MPI\_ALLGATHERV existe aussi.
+
+    \item MPI\_ALLTOALL(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm) chaque processus reçoit une partie de ce qui est envoyé par chaque autre. Le bloc j envoyé par le processus i est placé dans le bloc i du processus j. MPI\_ALLTOALLV et MPI\_ALLTOALLW existent aussi.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Réductions}
+
+  \begin{itemize}
+    \item MPI\_REDUCE(sendbuf, recvbuf, count, datatype, op, root, comm) les éléments de chaque processus sont combinés ensemble dans l'élément correspondant du root avec l'opération qui peut être MAX, MIN, SUM, PROD, LAND, BAND, LOR, BOR, LXOR, BXOR, MAXLOC, MINLOC; MAXLOC and MINLOC notent le processus qui fournit l'élément maximal ou minimal. Il existe aussi MPI\_ALLREDUCE qui retourne le résultat à tous.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Autres fonctions}
+
+  \begin{itemize}
+    \item MPI\_REDUCE\_SCATTER(sendbuf, recvbuf, recvcounts, datatype, op, comm) distribue les réductions selon le vecteur d'entier recvcounts.
+
+    \item MPI\_SCAN(sendbuf, recvbuf, count, datatype, op, comm), MPI\_EXSCAN, effectuent une réduction avec préfixe inclusive (0 à i) ou exclusive (0 à i - 1).
+
+    \item MPI\_OP\_CREATE(function, commute, op) permet de définir une opération en y associant une fonction. MPI\_OP\_FREE relâche l'opération créée.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Calcul de PI}
+
+  \scriptsize
+  \begin{minted}{cpp}
+#include "mpi.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+void srandom (unsigned seed);
+double dboard (int darts);
+#define DARTS 50000
+#define ROUNDS 10
+#define ROOT 0
+
+int main (int argc, char *argv[]) {
+  double homepi, pi, avepi, pirecv, pisum;
+  int rank, size, src, mtype, ret, i, n;
+  MPI_Status status;
+
+  MPI_Init(&argc,&argv);
+  MPI_Comm_size(MPI_COMM_WORLD,&size);
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Calcul de PI}
+
+  \scriptsize
+  \begin{minted}{cpp}
+  srandom (taskid);
+  avepi = 0;
+  for (i = 0; i < ROUNDS; i++) {
+    homepi = dboard(DARTS);
+    if (taskid != ROOT) {
+      mtype = i;
+      ret = MPI_Send(&homepi,1,MPI_DOUBLE, ROOT,mtype,MPI_COMM_WORLD);
+    } else {
+      mtype = i; pisum = 0;
+      for (n = 1; n < size; n++) {
+        ret = MPI_Recv(&pirecv, 1, MPI_DOUBLE, MPI_ANY_SOURCE,mtype, 
+            MPI_COMM_WORLD, &status);
+        pisum = pisum + pirecv;
+      }
+      pi = (pisum + homepi)/size;
+      avepi = ((avepi * i) + pi)/(i + 1);
+    } 
+  }
+  MPI_Finalize();
+  return 0;
+}
+  \end{minted}
+\end{frame}
+
+\begin{frame}[fragile]{Calcul de PI}
+
+  \small
+  \begin{minted}{cpp}
+  srandom (taskid);
+  avepi = 0;
+  for (i = 0; i < ROUNDS; i++) {
+    homepi = dboard(DARTS);
+    ret = MPI_Reduce(&homepi,&pisum,1,MPI_DOUBLE,MPI_SUM,ROOT,
+        MPI_COMM_WORLD);
+    if (taskid == ROOT) {
+      pi = pisum/numtasks;
+      avepi = ((avepi * i) + pi)/(i + 1); 
+    } 
+  } 
+  MPI_Finalize();
+  return 0;
+}
+  \end{minted}
+\end{frame}
+
+\section{Groupes de communication}
+
+\begin{frame}{Groupes de communication}
+
+  \begin{itemize}
+    \item MPI\_GROUP\_SIZE(group, size), taille du groupe.
+
+    \item MPI\_GROUP\_RANK(group, rank), position dans le groupe.
+
+    \item MPI\_GROUP\_TRANSLATE\_RANKS(group1, n, ranks1, group2, ranks2), pour chacun des n éléments du groupe 1 spécifiés dans ranks1, retourne le rang correspondant de group2 dans ranks2, ou MPI\_UNDEFINED s'il ne s'y trouve pas.
+
+    \item MPI\_GROUP\_COMPARE(group1, group2, result), compare les groupes pour voir si c'est le même ou s'ils ont les mêmes membres (IDENT, SIMILAR, UNEQUAL).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Sous-groupes}
+
+  \begin{itemize}
+    \item MPI\_COMM\_GROUP(comm, group) retourne le groupe du communicateur.
+
+    \item MPI\_GROUP\_UNION(group1, group2, newgroup), MPI\_GROUP\_INTERSECTION, MPI\_GROUP\_DIFFERENCE combinent deux groupes pour en faire un nouveau.
+
+    \item MPI\_GROUP\_INCL(group, n, ranks, newgroup), MPI\_GROUP\_EXCL, sélectionner des éléments à inclure ou exclure. RANGE\_INCL et RANGE\_EXCL existent aussi.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Autres fonctions}
+
+  \begin{itemize}
+    \item MPI\_GROUP\_FREE(group), libère le groupe
+
+    \item MPI\_COMM\_COMPARE(comm1, comm2, result), vérifie si les communicateurs (listes de membres) sont identiques, similaires ou différents.
+
+    \item MPI\_COMM\_DUP(comm, newcomm), copie le communicateur.
+
+    \item MPI\_COMM\_CREATE(comm, group, newcomm), crée un communicateur à partir d'un groupe.
+
+    \item MPI\_COMM\_SPLIT(comm, color, key, newcomm), crée un communicateur pour chaque groupe de processus avec la même couleur.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Attributs de Communicateurs}
+
+  \begin{itemize}
+    \item MPI\_COMM\_CREATE\_KEYVAL(copy\_fn, delete\_fn, key, fn\_data) réserve un code, key, pour un nouveau type d'attribut. les fonctions fn\_copy et fn\_delete sont appelées avec fn\_data lorsque l'attribut est copié ou relâché.
+
+    \item MPI\_COMM\_FREE\_KEYVAL(key)
+
+    \item MPI\_COMM\_SET\_ATTR(comm, key, value), MPI\_COMM\_GET\_ATTR(comm, key, val, flag), MPI\_COMM\_DELETE\_ATTR(comm, key), ajoute, accède ou enlève un attribut sur un communicateur.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Intercommunications}
+
+  \begin{itemize}
+    \item Communicateur entre deux groupes disjoints, local (inclut le processus courant) et remote (l'autre groupe).
+
+    \item MPI\_COMM\_TEST\_INTER(comm, flag), MPI\_COMM\_SIZE/GROUP/RANK, MPI\_COMM\_REMOTE\_SIZE/GROUP
+
+    \item MPI\_INTERCOMM\_CREATE(local\_comm, local\_leader, bridge\_comm, remote\_leader, tag, newintercomm) doit être appelé collectivement, bridge\_comm est un groupe englobant dans lequel remote\_leader est identifié.
+
+    \item MPI\_INTERCOMM\_MERGE(intercomm, high, newintracomm)
+    
+    \item MPI\_Send sur intercommunicateur utilise le rang de l'autre groupe...
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Exemple d'intercommunicateur}
+
+  \scriptsize
+  \begin{minted}{cpp}
+main(int argc, char **argv) { 
+  MPI_Comm c, ic1, ic2;
+  int mkey, rank; 
+
+  MPI_Init(&argc, &argv); 
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank); 
+  mkey = rank % 3; MPI_Comm_split(MPI_COMM_WORLD, mkey, rank, &c); 
+
+  /* Nous avons trois sous-groupes g0, g1 et g2 en pipeline; g0 parle
+     à g1 via 1 intercommunicateur, g1 parle à g0 et g2 et requiert 2
+     intercommunicateurs, et g2 a un intercommunicateur vers g1. */
+  if(mkey == 0) MPI_Intercomm_create(c,0,MPI_COMM_WORLD,1,1,&ic1);
+  else if (mkey == 1) { 
+    MPI_Intercomm_create(c,0,MPI_COMM_WORLD,0,1,&ic1); 
+    MPI_Intercomm_create(c,0,MPI_COMM_WORLD,2,12,&ic2);
+  } 
+  else MPI_Intercomm_create(c,0,MPI_COMM_WORLD,1,12,&ic1);
+  ...
+  MPI_Finalize();
+} 
+  \end{minted}
+\end{frame}
+
+\begin{frame}{Topologies cartésiennes}
+
+  \begin{itemize}
+    \item MPI\_CART\_CREATE(comm\_old, ndims, dims, periods, reorder, comm\_cart) crée un nouveau communicateur sur lequel il sera facile de connaître les voisins selon une grille à ndims dimensions (périodique, communication entre premier et dernier, ou non). 
+
+    \item MPI\_DIMS\_CREATE peut aider à choisir la grille.
+
+    \item MPI\_CARTDIM\_GET, MPI\_CART\_GET, permettent d'interroger la structure de la grille.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Topologies cartésiennes}
+
+  \begin{itemize}
+    \item MPI\_CART\_RANK(comm, coords, rank), retourne le rank d'une coordonnée.
+
+    \item MPI\_CART\_COORDS(comm, rank, maxdims, coords), retourne les coordonnées d'un rank.
+
+    \item MPI\_CART\_SHIFT(comm, direction, disp, rank\_source, rank\_dest), calcule les voisins source et destination pour une communication d'un déplacement et direction (dimension) spécifiés.
+
+    \item MPI\_CART\_SUB(comm, remain\_dims, newcomm) crée un communicateur sur une topologie sur un sous-ensemble des dimensions.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Topologies de graphes}
+
+  \begin{itemize}
+    \item MPI\_GRAPH\_CREATE(comm\_old, nnodes, index, edges, reorder, comm\_graph), crée un nouveau communicateur pour lequel il est facile de savoir les voisins dans le graphe spécifié. Index dit où le trouve la dernière arête dans edges connectée au noeud correspondant.
+
+    \item MPI\_GRAPHDIMS\_GET, MPI\_GRAPH\_GET, MPI\_GRAPH\_NEIGHBORS\_COUNT, MPI\_GRAPH\_NEIGHBORS, permettent d'interroger la structure du graphe.
+
+    \item MPI\_TOPO\_TEST(comm, status), savoir si cartésien, graphe ou aucun.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Récupération d'erreur}
+
+  \begin{itemize}
+    \item MPI\_COMM\_CREATE\_ERRHANDLER(fn, errhandler), create a error handler from a pointer to function to call.
+
+    \item MPI\_COMM\_SET\_ERRHANDLER(comm, errhandler), associer une fonction de rappel en cas d'erreur lors d'un appel impliquant une communication.
+
+    \item MPI\_COMM\_GET\_ERRHANDLER, MPI\_ERRHANDLER\_FREE...
+  \end{itemize}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Autres fonctions}
+
+  \begin{itemize}
+    \item MPI\_PROCESSOR\_NAME(name, resultlen), nom du noeud.
+
+    \item MPI\_WTIME() retourne le temps en secondes, double précision.
+
+    \item MPI\_WTICK() retourne la résolution du temps en secondes, double précision (e.g. .001s).
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Analyse de performance}
+
+  \begin{itemize}
+    \item Pour chaque fonction MPI, par exemple MPI\_FONCTION, le vrai nom est MPI\_PFONCTION et un symbole faible MPI\_FONCTION est ajouté (e.g. \#pragma weak MPI\_SEND = PMPI\_SEND). On peut donc remplacer MPI\_FONCTION par une version qui collecte des statistiques et appelle MPI\_PFONCTION à l'interne.
+
+    \item MPI\_PCONTROL(level), choisir le niveau de profilage.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Optimisation}
+
+  \begin{itemize}
+    \item Utiliser tous les noeuds, tout le temps (choisir la granularité, équilibrer la charge).
+
+    \item Réduire la communication (grouper les messages, recalculer, garder des copies).
+
+    \item Eviter les copies de données (e.g. BSend, données non contiguës).
+
+    \item RECV avant SEND, communications asynchrones en parallèle avec le calcul.
+
+    \item Requêtes réutilisées, éviter la scrutation...
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Outils d'analyse de performance}
+
+  \begin{itemize}
+    \item Tracer tous les envois de message et blocages associés. Obtenir un profil des temps d'exécution.
+
+    \item VampirTrace est gratuit mais le visualisateur, Vampir, est commercial.
+
+    \item MPE/Jumpshot (Argonne National Lab), TAU (UofOregon, Los Alamos National Lab), Paraver (Barcelona Supercomputing Center)
+
+    \item Oracle Studio Performance Analyzer.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusion}
+
+  \begin{itemize}
+    \item MPI est relativement simple (librairie) et mature, les grappes de noeuds n'ont pas changé aussi vite que les multi-processeurs.
+
+    \item Il n'existe plus beaucoup d'équivalent en compétition (PVM, LINDA).
+
+    \item La mise à l'échelle est cruciale avec les problèmes de taille monstrueuse et des grappes de milliers de noeuds.
+
+    \item Pour certaines applications, Hadoop et Spark peuvent être considérés comme des alternatives.
+  \end{itemize}
+\end{frame}
+
+\end{document}
