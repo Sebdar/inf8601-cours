@@ -280,81 +280,7 @@ MPI_Type_commit(&ElementType);
 
 \begin{frame}[fragile]{Multiplication de matrice}
 
-  \scriptsize
-  \begin{minted}{cpp}
-#include "mpi.h"
-#include <stdio.h>
-#include <stdlib.h>
-#define RA 62
-#define CA 15
-#define CB 7
-#define ROOT 0
-#define ROOT_A_FEUILE 1
-#define FEUILLE_A_ROOT 2
-
-int main (int argc, char *argv[]) {
-  int size, rank, src, dest, mtype;
-  int rangees, moyenne, extra, offset, i, j, k, rc;
-  double a[RA][CA], b[CA][CB], c[RA][CB];
-  MPI_Status status;
-
-  MPI_Init(&argc,&argv);
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-  MPI_Comm_size(MPI_COMM_WORLD,&size);
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Multiplication de matrice}
-
-  \scriptsize
-  \begin{minted}{cpp}
-  if (rank == ROOT) { 
-    moyenne = RA / (size - 1); extra = RA % (size - 1);
-    offset = 0; mtype = ROOT_A_FEUILLE;
-    for (dest=1; dest<=(size - 1); dest++) { 
-      rangees = (dest <= extra) ? moyenne+1 : moyenne;
-      MPI_Send(&offset,1,MPI_INT,dest,mtype,MPI_COMM_WORLD);
-      MPI_Send(&rangees,1,MPI_INT,dest,mtype,MPI_COMM_WORLD);
-      MPI_Send(&a[offset][0],rangees*CA,MPI_DOUBLE,dest, 
-          mtype, MPI_COMM_WORLD);
-      MPI_Send(&b,CA*CB,MPI_DOUBLE,dest,mtype,MPI_COMM_WORLD);
-      offset = offset + rangees;
-    }
-    mtype = FEUILLE_A_ROOT;
-    for (i=1; i<=(size - 1); i++) { 
-      src = i;
-      MPI_Recv(&offset,1,MPI_INT,src,mtype,MPI_COMM_WORLD,&status);
-      MPI_Recv(&rangees,1,MPI_INT,src,mtype,MPI_COMM_WORLD,&status);
-      MPI_Recv(&c[offset][0],rangees*CB,MPI_DOUBLE,src,mtype,
-          MPI_COMM_WORLD,&status);
-    }
-  }
-  \end{minted}
-\end{frame}
-
-\begin{frame}[fragile]{Multiplication de matrice}
-
-  \scriptsize
-  \begin{minted}{cpp}
-  if (rank > ROOT) { 
-    mtype = ROOT_A_FEUILLE;
-    MPI_Recv(&offset,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD,&status);
-    MPI_Recv(&rangees,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD,&status);
-    MPI_Recv(&a,rangees*CA,MPI_DOUBLE,ROOT,mtype,MPI_COMM_WORLD, &status);
-    MPI_Recv(&b,CA*CB,MPI_DOUBLE,ROOT,mtype,MPI_COMM_WORLD,&status);
-    for (k=0; k<CB; k++)
-      for (i=0; i<rangees; i++) { 
-        c[i][k] = 0.0;
-        for (j=0; j<CA; j++) c[i][k]=c[i][k]+a[i][j]*b[j][k];
-      }
-    mtype = FEUILLE_A_ROOT;
-    MPI_Send(&offset,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD);
-    MPI_Send(&rangees,1,MPI_INT,ROOT,mtype,MPI_COMM_WORLD);
-    MPI_Send(&c,rangees*CB,MPI_DOUBLE,ROOT,mtype,MPI_COMM_WORLD);
-  }
-  MPI_Finalize();
-}
-  \end{minted}
+Exemple 03
 \end{frame}
 
 \section{Communications globales}
@@ -415,76 +341,14 @@ int main (int argc, char *argv[]) {
 
 \begin{frame}[fragile]{Calcul de PI}
 
-  \scriptsize
-  \begin{minted}{cpp}
-#include "mpi.h"
-#include <stdio.h>
-#include <stdlib.h>
+Exemple 04
 
-void srandom (unsigned seed);
-double dboard (int darts);
-#define DARTS 50000
-#define ROUNDS 10
-#define ROOT 0
-
-int main (int argc, char *argv[]) {
-  double homepi, pi, avepi, pirecv, pisum;
-  int rank, size, src, mtype, ret, i, n;
-  MPI_Status status;
-
-  MPI_Init(&argc,&argv);
-  MPI_Comm_size(MPI_COMM_WORLD,&size);
-  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-  \end{minted}
 \end{frame}
 
 \begin{frame}[fragile]{Calcul de PI}
 
-  \scriptsize
-  \begin{minted}{cpp}
-  srandom (taskid);
-  avepi = 0;
-  for (i = 0; i < ROUNDS; i++) {
-    homepi = dboard(DARTS);
-    if (taskid != ROOT) {
-      mtype = i;
-      ret = MPI_Send(&homepi,1,MPI_DOUBLE, ROOT,mtype,MPI_COMM_WORLD);
-    } else {
-      mtype = i; pisum = 0;
-      for (n = 1; n < size; n++) {
-        ret = MPI_Recv(&pirecv, 1, MPI_DOUBLE, MPI_ANY_SOURCE,mtype, 
-            MPI_COMM_WORLD, &status);
-        pisum = pisum + pirecv;
-      }
-      pi = (pisum + homepi)/size;
-      avepi = ((avepi * i) + pi)/(i + 1);
-    } 
-  }
-  MPI_Finalize();
-  return 0;
-}
-  \end{minted}
-\end{frame}
+Exemple 05
 
-\begin{frame}[fragile]{Calcul de PI}
-
-  \small
-  \begin{minted}{cpp}
-  srandom (taskid);
-  avepi = 0;
-  for (i = 0; i < ROUNDS; i++) {
-    homepi = dboard(DARTS);
-    ret = MPI_Reduce(&homepi,&pisum,1,MPI_DOUBLE,MPI_SUM,ROOT,
-        MPI_COMM_WORLD);
-    if (taskid == ROOT) {
-      pi = pisum/numtasks;
-      avepi = ((avepi * i) + pi)/(i + 1); 
-    } 
-  } 
-  MPI_Finalize();
-  return 0;
-}
-  \end{minted}
 \end{frame}
 
 \section{Groupes de communication}
@@ -558,7 +422,7 @@ int main (int argc, char *argv[]) {
 
   \scriptsize
   \begin{minted}{cpp}
-main(int argc, char **argv) { 
+int main(int argc, char **argv) { 
   MPI_Comm c, ic1, ic2;
   int mkey, rank; 
 
