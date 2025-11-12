@@ -223,20 +223,24 @@ void parprfsum (int *x, int n, int *z)
   \scriptsize
   \begin{minted}{c}
 void uncomprle(int *x, int nx, int *tmp, int *y, int *ny)
-{ int i, nx2 = nx / 2;
+{ int nx2 = nx / 2;
   int z[MAXTHREADS];
   tmp[0] = 0;
-  for(i = 0; i < nx2; i++) tmp[i + 1] = x[2 * i];
+
+  for(int i = 0; i < nx2; i++) 
+    tmp[i + 1] = x[2 * i];
+  
   parprfsum(tmp + 1, nx2 + 1, z);
 
   #pragma omp parallel
-  { int j, k;
+  {
     #pragma omp for
-    for(j = 0; j < nx2; j++) {
+    for(int j = 0; j < nx2; j++) {
       int start = tmp[j];
       int val = x[2 * j +1];
       int nrun = x[2 * j];
-      for(k = 0; k < nrun; k++) y[start + k] = val;
+      for(int k = 0; k < nrun; k++) 
+        y[start + k] = val;
     }
   }
   *ny = tmp[nx2];
